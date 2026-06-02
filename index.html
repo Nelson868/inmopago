@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<meta name="theme-color" content="#1D9E75"/>
+<title>InmoPago — Gestión de arriendos</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --brand:#1D9E75;--brand-light:#E1F5EE;--brand-dark:#085041;
+  --bg:#ffffff;--bg2:#f7f8fa;--bg3:#f0f1f3;
+  --border:#e2e4e9;--border2:#d0d3db;
+  --text:#111318;--text2:#5b6071;--text3:#9198a8;
+  --danger-bg:#fff1f1;--danger:#c0392b;
+  --radius:10px;--radius-sm:7px;--radius-lg:14px;
+  --shadow:0 2px 12px rgba(0,0,0,.07);
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:var(--bg2);color:var(--text);min-height:100vh;font-size:14px}
+
+/* HEADER */
+.header{display:flex;align-items:center;justify-content:space-between;padding:.75rem 1.25rem;background:var(--bg);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:50;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-icon{width:34px;height:34px;border-radius:var(--radius-sm);background:var(--brand);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.logo-icon i{color:#fff;font-size:18px}
+.logo-text{font-size:15px;font-weight:600;line-height:1.2}
+.logo-sub{font-size:11px;color:var(--text2)}
+.header-right{display:flex;align-items:center;gap:8px}
+.chip{display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;background:var(--bg2);border:1px solid var(--border);font-size:12px;color:var(--text2)}
+.chip .dot{width:7px;height:7px;border-radius:50%;background:var(--brand)}
+.admin-btn{display:flex;align-items:center;gap:6px;padding:6px 13px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg);cursor:pointer;font-size:12px;font-weight:500;color:var(--text2);transition:all .15s;white-space:nowrap}
+.admin-btn:hover{background:var(--bg2);color:var(--text)}
+.admin-btn.active{background:var(--brand-light);color:var(--brand-dark);border-color:var(--brand)}
+
+/* SCREENS */
+.screen{display:none;padding:1.25rem;max-width:900px;margin:0 auto}
+.screen.active{display:block}
+@media(max-width:600px){.screen{padding:.85rem}}
+
+/* CARDS */
+.card{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;margin-bottom:1.1rem;box-shadow:var(--shadow)}
+
+/* LOGIN */
+.login-center{display:flex;align-items:center;justify-content:center;min-height:calc(100vh - 56px);padding:1rem}
+.login-box{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-lg);padding:2rem;width:100%;max-width:400px;box-shadow:var(--shadow)}
+.login-box h2{font-size:18px;font-weight:600;margin-bottom:5px}
+.login-box p{font-size:13px;color:var(--text2);margin-bottom:1.5rem}
+.login-icon{width:52px;height:52px;border-radius:var(--radius);background:var(--brand-light);display:flex;align-items:center;justify-content:center;margin-bottom:1.1rem}
+.login-icon i{color:var(--brand-dark);font-size:24px}
+
+/* FIELDS */
+.field{margin-bottom:.9rem}
+.field label{display:block;font-size:12px;font-weight:500;color:var(--text2);margin-bottom:5px}
+.field input,.field select{width:100%;padding:8px 12px;font-size:14px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--bg);color:var(--text);transition:border .15s;outline:none}
+.field input:focus,.field select:focus{border-color:var(--brand)}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.field-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+@media(max-width:500px){.field-row,.field-row3{grid-template-columns:1fr}}
+.pass-wrap{position:relative}
+.pass-wrap input{padding-right:38px}
+.pass-toggle{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text3);padding:2px}
+
+/* ALERTS */
+.alert{display:none;padding:9px 13px;border-radius:var(--radius-sm);font-size:13px;margin-bottom:.9rem;align-items:center;gap:7px}
+.alert.show{display:flex}
+.alert-err{background:var(--danger-bg);color:var(--danger)}
+.alert-ok{background:var(--brand-light);color:var(--brand-dark)}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:9px 18px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;border:none;white-space:nowrap}
+.btn-block{width:100%}
+.btn-brand{background:var(--brand);color:#fff}
+.btn-brand:hover{opacity:.88}
+.btn-outline{background:transparent;border:1px solid var(--border2);color:var(--text2)}
+.btn-outline:hover{background:var(--bg2);color:var(--text)}
+.btn-ghost{background:transparent;border:none;color:var(--text2);padding:6px 10px;border-radius:var(--radius-sm)}
+.btn-ghost:hover{background:var(--bg2)}
+.btn-ghost.danger:hover{background:var(--danger-bg);color:var(--danger)}
+.btn-sm{padding:5px 11px;font-size:12px}
+
+/* HINT */
+.hint{font-size:11px;color:var(--text3);margin-top:5px}
+
+/* TENANT */
+.page-title{font-size:20px;font-weight:600;margin-bottom:3px}
+.page-sub{font-size:13px;color:var(--text2);margin-bottom:1.25rem}
+.dept-header{display:flex;align-items:flex-start;gap:12px;margin-bottom:1rem}
+.dept-icon{width:44px;height:44px;border-radius:var(--radius);background:var(--brand-light);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.dept-icon i{color:var(--brand-dark);font-size:20px}
+.badge{display:inline-block;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600}
+.badge-pending{background:#FEF3C7;color:#92400E}
+.badge-paid{background:#D1FAE5;color:#065F46}
+.badge-overdue{background:#FEE2E2;color:#991B1B}
+
+/* MONTHS */
+.months-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:7px;margin-bottom:1rem}
+.mpill{padding:8px 6px;border-radius:var(--radius-sm);border:1px solid var(--border);font-size:12px;text-align:center;cursor:pointer;background:var(--bg2);transition:all .15s}
+.mpill:hover:not(.mlocked){border-color:var(--brand);background:var(--brand-light)}
+.mpill.mpaid{background:#D1FAE5;border-color:#6EE7B7;color:#065F46}
+.mpill.mpending{background:#FEF3C7;border-color:#FCD34D;color:#92400E;font-weight:600}
+.mpill.moverdue{background:#FEE2E2;border-color:#FCA5A5;color:#991B1B;font-weight:600}
+.mpill.mlocked{opacity:.38;cursor:not-allowed}
+.mpill .ms{font-size:10px;display:block;margin-top:2px;color:inherit}
+.mpill.selected{outline:2px solid var(--brand);outline-offset:1px}
+
+/* PAY BOX */
+.pay-box{background:var(--bg2);border-radius:var(--radius);padding:1rem 1.1rem}
+.pay-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.pay-lbl{font-size:12px;color:var(--text2)}
+.pay-val{font-size:13px;font-weight:500}
+.pay-total-val{font-size:17px;font-weight:700;color:var(--brand-dark)}
+.sep{border:none;border-top:1px solid var(--border);margin:9px 0}
+.pay-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:.9rem}
+
+/* UPLOAD */
+.upload-zone{border:2px dashed var(--border2);border-radius:var(--radius);padding:1.25rem 1rem;text-align:center;cursor:pointer;transition:all .15s;margin-top:.75rem;background:var(--bg)}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--brand);background:var(--brand-light)}
+.upload-zone i{font-size:28px;color:var(--text3);display:block;margin-bottom:6px}
+.upload-zone .uz-title{font-size:13px;font-weight:500;margin-bottom:3px}
+.upload-zone .uz-sub{font-size:11px;color:var(--text3)}
+.upload-zone input[type=file]{display:none}
+.file-pill{display:flex;align-items:center;gap:10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 12px;margin-top:.75rem}
+.file-ico{width:34px;height:34px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.file-ico.pdf{background:#FEE2E2;color:#991B1B}
+.file-ico.img{background:var(--brand-light);color:var(--brand-dark)}
+.file-name{font-size:13px;font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file-sz{font-size:11px;color:var(--text3)}
+.upload-req{font-size:11px;color:var(--danger);margin-top:5px;display:none;align-items:center;gap:5px}
+
+/* ADMIN NAV */
+.admin-nav{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1.25rem}
+.tab-btn{display:flex;align-items:center;gap:5px;padding:7px 13px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg);cursor:pointer;font-size:12px;font-weight:500;color:var(--text2);transition:all .15s}
+.tab-btn:hover{background:var(--bg2);color:var(--text)}
+.tab-btn.active{background:var(--brand-light);color:var(--brand-dark);border-color:var(--brand)}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+
+/* STATS */
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:9px;margin-bottom:1.25rem}
+.stat-card{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:.9rem 1rem;box-shadow:var(--shadow)}
+.stat-lbl{font-size:11px;color:var(--text2);margin-bottom:4px}
+.stat-val{font-size:22px;font-weight:700}
+.stat-val.green{color:#065F46}.stat-val.amber{color:#92400E}.stat-val.blue{color:#1D4ED8}
+
+/* TABLE */
+.tbl-wrap{border:1px solid var(--border);border-radius:var(--radius-lg);overflow:auto;margin-bottom:1.25rem;background:var(--bg);box-shadow:var(--shadow)}
+table.tbl{width:100%;border-collapse:collapse;font-size:12px}
+.tbl th{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);font-weight:600;color:var(--text2);font-size:11px;background:var(--bg2);white-space:nowrap}
+.tbl td{padding:10px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:var(--bg2)}
+.pill{display:inline-block;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600}
+.pill-paid{background:#D1FAE5;color:#065F46}
+.pill-pending{background:#FEF3C7;color:#92400E}
+.pill-overdue{background:#FEE2E2;color:#991B1B}
+.pill-vacant{background:#DBEAFE;color:#1E40AF}
+.pill-admin{background:#EDE9FE;color:#4C1D95}
+.pill-viewer{background:#DBEAFE;color:#1E40AF}
+.comprobante-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:11px;background:#DBEAFE;color:#1E40AF}
+
+/* FORM CARD */
+.form-card{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;margin-bottom:1.25rem;box-shadow:var(--shadow)}
+.form-card h3{font-size:14px;font-weight:600;margin-bottom:1rem;padding-bottom:.65rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.form-actions{display:flex;gap:8px;margin-top:1rem;flex-wrap:wrap}
+.section-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:.85rem;flex-wrap:wrap;gap:8px}
+.sec-title{font-size:15px;font-weight:600}
+.btn-add{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border-radius:var(--radius-sm);border:1px solid var(--brand);background:var(--brand-light);color:var(--brand-dark);cursor:pointer;font-size:12px;font-weight:600;transition:opacity .15s}
+.btn-add:hover{opacity:.82}
+
+/* USER AVATAR */
+.u-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0}
+
+/* SUMMARY CARD */
+.sum-card{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.1rem;margin-bottom:.85rem;box-shadow:var(--shadow)}
+.progress-bg{background:var(--bg3);border-radius:99px;height:6px;overflow:hidden;margin-bottom:5px}
+.progress-fill{height:100%;border-radius:99px;background:var(--brand)}
+.progress-labels{display:flex;justify-content:space-between;font-size:11px;color:var(--text2)}
+
+/* MODALS */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center;padding:1rem}
+.overlay.visible{display:flex}
+.modal{background:var(--bg);border-radius:var(--radius-lg);padding:2rem;width:100%;max-width:380px;box-shadow:0 8px 32px rgba(0,0,0,.18)}
+.modal-icon{width:54px;height:54px;border-radius:50%;background:#D1FAE5;display:flex;align-items:center;justify-content:center;margin:0 auto .9rem}
+.modal-icon i{color:#065F46;font-size:27px}
+.modal h2{font-size:17px;font-weight:600;margin-bottom:6px;text-align:center}
+.modal p{font-size:13px;color:var(--text2);margin-bottom:1.25rem;text-align:center}
+.receipt{background:var(--bg2);border-radius:var(--radius-sm);padding:.9rem;font-size:12px;margin-bottom:1.1rem}
+.r-row{display:flex;justify-content:space-between;margin-bottom:4px;color:var(--text2)}
+.r-row span:last-child{color:var(--text);font-weight:600}
+.r-file{display:flex;align-items:center;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
+.confirm-modal h3{font-size:15px;font-weight:600;margin-bottom:8px;text-align:center}
+.confirm-modal p{font-size:13px;color:var(--text2);margin-bottom:1.25rem;text-align:center}
+.confirm-actions{display:flex;gap:8px}
+.btn-danger{flex:1;padding:9px;border-radius:var(--radius-sm);background:#DC2626;color:#fff;font-size:13px;font-weight:600;border:none;cursor:pointer}
+
+/* TOAST */
+.toast{display:none;border-radius:var(--radius-sm);padding:9px 14px;font-size:13px;margin-bottom:1rem;align-items:center;gap:8px;font-weight:500}
+.toast.ok{display:flex;background:#D1FAE5;color:#065F46}
+.toast.err{display:flex;background:#FEE2E2;color:#991B1B}
+
+/* BACK LINK */
+.back-link{display:inline-flex;align-items:center;gap:5px;font-size:13px;color:var(--text2);cursor:pointer;margin-bottom:.9rem;transition:color .15s}
+.back-link:hover{color:var(--text)}
+
+/* RESPONSIVE TABLE */
+@media(max-width:700px){
+  .tbl th,.tbl td{padding:7px 7px;font-size:11px}
+  .admin-nav{gap:5px}
+  .tab-btn{padding:6px 9px;font-size:11px}
+  .stats-row{grid-template-columns:1fr 1fr}
+}
+@media(max-width:450px){
+  .header .logo-sub{display:none}
+  .pay-btns{grid-template-columns:1fr}
+}
+
+/* GC note */
+.gc-note{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:var(--radius-sm);background:var(--bg2);border:1px solid var(--border);font-size:12px;color:var(--text2);margin-top:.65rem}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">
+    <div class="logo-icon"><i class="ti ti-building"></i></div>
+    <div>
+      <div class="logo-text">InmoPago</div>
+      <div class="logo-sub">Gestión de arriendos</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="chip" id="adminChip" style="display:none">
+      <div class="dot"></div><span id="adminChipName"></span>
+    </div>
+    <button class="admin-btn" id="adminToggle" onclick="handleAdminClick()">
+      <i class="ti ti-shield-lock"></i>
+      <span id="adminLbl">Panel admin</span>
+    </button>
+  </div>
+</div>
+
+<!-- ═══ TENANT LOGIN ═══ -->
+<div class="screen active" id="screenLogin">
+  <div class="login-center">
+    <div class="login-box">
+      <div class="login-icon"><i class="ti ti-home"></i></div>
+      <h2>Paga tu arriendo</h2>
+      <p>Ingresa tu RUT para ver tu departamento y cuotas pendientes.</p>
+      <div class="alert alert-err" id="loginError"><i class="ti ti-alert-circle"></i> RUT no encontrado. Verifica e intenta nuevamente.</div>
+      <div class="field">
+        <label>RUT del arrendatario</label>
+        <input type="text" id="rutInput" placeholder="12.345.678-9" maxlength="12" inputmode="numeric" oninput="formatRut(this)" onkeydown="if(event.key==='Enter')doLogin()"/>
+      </div>
+      <p class="hint" style="margin-bottom:1rem">Prueba: 12.345.678-9 · 9.876.543-2 · 14.567.890-K · 11.111.111-1</p>
+      <button class="btn btn-brand btn-block" onclick="doLogin()"><i class="ti ti-arrow-right"></i> Continuar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TENANT DASHBOARD ═══ -->
+<div class="screen" id="screenTenant">
+  <span class="back-link" onclick="doLogout()"><i class="ti ti-arrow-left"></i> Cerrar sesión</span>
+  <div class="page-title" id="tenantName"></div>
+  <div class="page-sub" id="tenantSub"></div>
+  <div id="deptCardWrap"></div>
+</div>
+
+<!-- ═══ ADMIN PANEL ═══ -->
+<div class="screen" id="screenAdmin">
+  <div class="admin-nav">
+    <button class="tab-btn active" onclick="switchTab(event,'tabTenants')"><i class="ti ti-users"></i> Arrendatarios</button>
+    <button class="tab-btn" onclick="switchTab(event,'tabDepts')"><i class="ti ti-building-estate"></i> Departamentos</button>
+    <button class="tab-btn" onclick="switchTab(event,'tabSummary')"><i class="ti ti-chart-bar"></i> Resumen</button>
+    <button class="tab-btn" onclick="switchTab(event,'tabNewTenant')"><i class="ti ti-user-plus"></i> Nuevo arrendatario</button>
+    <button class="tab-btn" onclick="switchTab(event,'tabNewDept')"><i class="ti ti-plus"></i> Nuevo departamento</button>
+    <button class="tab-btn" onclick="switchTab(event,'tabUsers')"><i class="ti ti-settings"></i> Usuarios</button>
+    <button class="tab-btn" id="btnTabEditDept" style="display:none" onclick="switchTab(event,'tabEditDept')"><i class="ti ti-pencil"></i> Editar depto</button>
+    <button class="tab-btn" id="btnTabEditTenant" style="display:none" onclick="switchTab(event,'tabEditTenant')"><i class="ti ti-pencil"></i> Editar arrendatario</button>
+  </div>
+
+  <!-- Arrendatarios -->
+  <div class="tab-panel active" id="tabTenants">
+    <div class="stats-row" id="adminStats"></div>
+    <div class="section-hdr">
+      <div class="sec-title">Arrendatarios</div>
+      <button class="btn-add" onclick="switchTab(null,'tabNewTenant')"><i class="ti ti-user-plus"></i> Agregar</button>
+    </div>
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr>
+        <th>Nombre</th><th>RUT</th><th>Teléfono</th><th>Departamento</th>
+        <th>Vencimiento</th><th>Estado</th><th style="text-align:right">Arriendo</th><th style="text-align:center">Comprobantes</th><th style="text-align:center">Acciones</th>
+      </tr></thead>
+      <tbody id="tenantsBody"></tbody>
+    </table></div>
+  </div>
+
+  <!-- Departamentos -->
+  <div class="tab-panel" id="tabDepts">
+    <div class="section-hdr">
+      <div class="sec-title">Departamentos</div>
+      <button class="btn-add" onclick="switchTab(null,'tabNewDept')"><i class="ti ti-plus"></i> Agregar</button>
+    </div>
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr>
+        <th>Nombre</th><th>Dirección</th><th>Rol Dpto</th><th>Rol Bodega</th>
+        <th>Rol Estac.</th><th>G.Comunes</th><th>Arrendatario</th><th>Estado</th><th style="text-align:center">Acciones</th>
+      </tr></thead>
+      <tbody id="deptsBody"></tbody>
+    </table></div>
+  </div>
+
+  <!-- Resumen -->
+  <div class="tab-panel" id="tabSummary">
+    <div class="sec-title" style="margin-bottom:.85rem">Resumen por departamento</div>
+    <div id="summaryWrap"></div>
+  </div>
+
+  <!-- Nuevo arrendatario -->
+  <div class="tab-panel" id="tabNewTenant">
+    <div class="toast" id="toastTenant"></div>
+    <div class="form-card">
+      <h3><i class="ti ti-user-plus" style="color:var(--brand)"></i> Registrar arrendatario</h3>
+      <div class="field-row">
+        <div class="field"><label>Nombre completo *</label><input type="text" id="nt_name" placeholder="Juan Pérez González"/></div>
+        <div class="field"><label>RUT *</label><input type="text" id="nt_rut" placeholder="12.345.678-9" maxlength="12" oninput="formatRut(this)"/></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Teléfono</label><input type="tel" id="nt_phone" placeholder="+56 9 1234 5678"/></div>
+        <div class="field"><label>Correo electrónico</label><input type="email" id="nt_email" placeholder="correo@ejemplo.cl"/></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Departamento asignado *</label><select id="nt_dept"><option value="">— Seleccionar —</option></select></div>
+        <div class="field"><label>Monto arriendo (CLP) *</label><input type="number" id="nt_rent" placeholder="350000" inputmode="numeric"/></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Día de vencimiento *</label><input type="number" id="nt_due" min="1" max="28" placeholder="5" inputmode="numeric"/></div>
+        <div class="field"><label>Fecha inicio contrato</label><input type="date" id="nt_start"/></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-brand" onclick="saveTenant()"><i class="ti ti-check"></i> Guardar arrendatario</button>
+        <button class="btn btn-outline" onclick="clearTenantForm()">Limpiar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Nuevo departamento -->
+  <div class="tab-panel" id="tabNewDept">
+    <div class="toast" id="toastDept"></div>
+    <div class="form-card">
+      <h3><i class="ti ti-building-estate" style="color:var(--brand)"></i> Registrar departamento</h3>
+      <div class="field-row">
+        <div class="field"><label>Nombre *</label><input type="text" id="nd_name" placeholder="Depto. 301"/></div>
+        <div class="field"><label>Dirección completa *</label><input type="text" id="nd_addr" placeholder="Av. Arturo Prat 456, Iquique"/></div>
+      </div>
+      <div class="field-row3">
+        <div class="field"><label>Rol departamento</label><input type="text" id="nd_rolDpto" placeholder="1234-5"/></div>
+        <div class="field"><label>Rol bodega</label><input type="text" id="nd_rolBodega" placeholder="1234-B1"/></div>
+        <div class="field"><label>Rol estacionamiento</label><input type="text" id="nd_rolEstac" placeholder="1234-E2"/></div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Gastos comunes (CLP) <span style="font-size:11px;color:var(--text3)">— cargo del arrendador</span></label>
+          <input type="number" id="nd_gc" placeholder="15000" inputmode="numeric"/>
+        </div>
+        <div class="field"><label>Piso / descripción</label><input type="text" id="nd_floor" placeholder="3er piso"/></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-brand" onclick="saveDept()"><i class="ti ti-check"></i> Guardar departamento</button>
+        <button class="btn btn-outline" onclick="clearDeptForm()">Limpiar</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Editar departamento -->
+  <div class="tab-panel" id="tabEditDept">
+    <div class="toast" id="toastEditDept"></div>
+    <div class="form-card">
+      <h3><i class="ti ti-pencil" style="color:var(--brand)"></i> Editar departamento</h3>
+      <input type="hidden" id="ed_id"/>
+      <div class="field-row">
+        <div class="field"><label>Nombre *</label><input type="text" id="ed_name" placeholder="Depto. 301"/></div>
+        <div class="field"><label>Dirección completa *</label><input type="text" id="ed_addr" placeholder="Av. Arturo Prat 456"/></div>
+      </div>
+      <div class="field-row3">
+        <div class="field"><label>Rol departamento</label><input type="text" id="ed_rolDpto" placeholder="1234-5"/></div>
+        <div class="field"><label>Rol bodega</label><input type="text" id="ed_rolBodega" placeholder="1234-B1"/></div>
+        <div class="field"><label>Rol estacionamiento</label><input type="text" id="ed_rolEstac" placeholder="1234-E2"/></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Gastos comunes (CLP) <span style="font-size:11px;color:var(--text3)">cargo del arrendador</span></label><input type="number" id="ed_gc" placeholder="15000" inputmode="numeric"/></div>
+        <div class="field"><label>Piso / descripción</label><input type="text" id="ed_floor" placeholder="3er piso"/></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-brand" onclick="updateDept()"><i class="ti ti-check"></i> Guardar cambios</button>
+        <button class="btn btn-outline" onclick="switchTab(null,'tabDepts')">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Editar arrendatario -->
+  <div class="tab-panel" id="tabEditTenant">
+    <div class="toast" id="toastEditTenant"></div>
+    <div class="form-card">
+      <h3><i class="ti ti-pencil" style="color:var(--brand)"></i> Editar arrendatario</h3>
+      <input type="hidden" id="et_id"/>
+      <div class="field-row">
+        <div class="field"><label>Nombre completo *</label><input type="text" id="et_name" placeholder="Juan Pérez"/></div>
+        <div class="field"><label>RUT *</label><input type="text" id="et_rut" placeholder="12.345.678-9" maxlength="12" oninput="formatRut(this)"/></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Teléfono</label><input type="tel" id="et_phone" placeholder="+56 9 1234 5678"/></div>
+        <div class="field"><label>Correo electrónico</label><input type="email" id="et_email" placeholder="correo@ejemplo.cl"/></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Departamento asignado *</label><select id="et_dept"><option value="">— Seleccionar —</option></select></div>
+        <div class="field"><label>Monto arriendo (CLP) *</label><input type="number" id="et_rent" placeholder="350000" inputmode="numeric"/></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Día de vencimiento *</label><input type="number" id="et_due" min="1" max="28" placeholder="5" inputmode="numeric"/></div>
+        <div class="field"><label>Fecha inicio contrato</label><input type="date" id="et_start"/></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-brand" onclick="updateTenant()"><i class="ti ti-check"></i> Guardar cambios</button>
+        <button class="btn btn-outline" onclick="switchTab(null,'tabTenants')">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Usuarios admin -->
+  <div class="tab-panel" id="tabUsers">
+    <div class="toast" id="toastUser"></div>
+    <div class="section-hdr">
+      <div class="sec-title">Usuarios del panel</div>
+      <button class="btn-add" onclick="openUserForm()"><i class="ti ti-user-plus"></i> Nuevo usuario</button>
+    </div>
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr>
+        <th style="width:36px"></th><th>Nombre</th><th>Usuario</th>
+        <th>Rol</th><th>Último acceso</th><th style="text-align:center">Acciones</th>
+      </tr></thead>
+      <tbody id="usersBody"></tbody>
+    </table></div>
+    <div id="userFormWrap" style="display:none">
+      <div class="form-card">
+        <h3 id="userFormTitle"><i class="ti ti-user-plus" style="color:var(--brand)"></i> Nuevo usuario</h3>
+        <input type="hidden" id="u_id"/>
+        <div class="field-row">
+          <div class="field"><label>Nombre completo *</label><input type="text" id="u_name" placeholder="Pedro Soto"/></div>
+          <div class="field"><label>Nombre de usuario *</label><input type="text" id="u_username" placeholder="psoto" autocomplete="off"/></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Correo electrónico</label><input type="email" id="u_email" placeholder="pedro@inmopago.cl"/></div>
+          <div class="field"><label>Rol *</label>
+            <select id="u_role"><option value="admin">Administrador</option><option value="viewer">Solo lectura</option></select>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label id="u_passLabel">Contraseña *</label>
+            <div class="pass-wrap"><input type="password" id="u_pass" placeholder="Mín. 6 caracteres" autocomplete="new-password"/>
+              <button class="pass-toggle" onclick="togglePass('u_pass',this)" type="button"><i class="ti ti-eye"></i></button>
+            </div>
+          </div>
+          <div class="field"><label id="u_pass2Label">Confirmar contraseña *</label>
+            <div class="pass-wrap"><input type="password" id="u_pass2" placeholder="Repetir contraseña" autocomplete="new-password"/>
+              <button class="pass-toggle" onclick="togglePass('u_pass2',this)" type="button"><i class="ti ti-eye"></i></button>
+            </div>
+          </div>
+        </div>
+        <p class="hint" id="editPassHint" style="margin-bottom:.5rem"></p>
+        <div class="form-actions">
+          <button class="btn btn-brand" onclick="saveUser()"><i class="ti ti-check"></i> <span id="userSaveLabel">Crear usuario</span></button>
+          <button class="btn btn-outline" onclick="closeUserForm()">Cancelar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ADMIN LOGIN OVERLAY ═══ -->
+<div class="overlay" id="adminLoginOverlay">
+  <div class="modal">
+    <div class="login-icon" style="margin:0 auto 1.1rem"><i class="ti ti-shield-lock"></i></div>
+    <h2>Acceso al panel</h2>
+    <p>Ingresa tus credenciales de administrador.</p>
+    <div class="alert alert-err" id="adminLoginError"><i class="ti ti-alert-circle"></i> Usuario o contraseña incorrectos.</div>
+    <div class="field"><label>Usuario</label><input type="text" id="al_user" placeholder="admin" autocomplete="username" onkeydown="if(event.key==='Enter')doAdminLogin()"/></div>
+    <div class="field"><label>Contraseña</label>
+      <div class="pass-wrap">
+        <input type="password" id="al_pass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doAdminLogin()"/>
+        <button class="pass-toggle" onclick="togglePass('al_pass',this)" type="button"><i class="ti ti-eye"></i></button>
+      </div>
+    </div>
+    <p class="hint" style="margin-bottom:1rem">Usuario de prueba: <strong>admin</strong> / Contraseña: <strong>admin123</strong></p>
+    <button class="btn btn-brand btn-block" onclick="doAdminLogin()"><i class="ti ti-lock-open"></i> Ingresar</button>
+    <button class="btn btn-outline btn-block" style="margin-top:8px" onclick="closeAdminLogin()">Cancelar</button>
+  </div>
+</div>
+
+<!-- ═══ SUCCESS MODAL ═══ -->
+<div class="overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-icon"><i class="ti ti-check"></i></div>
+    <h2>¡Pago registrado!</h2>
+    <p>Tu comprobante fue enviado exitosamente.</p>
+    <div class="receipt" id="modalReceipt"></div>
+    <button class="btn btn-outline btn-block" onclick="closeModal()">Volver al inicio</button>
+  </div>
+</div>
+
+<!-- ═══ CONFIRM DELETE ═══ -->
+<div class="overlay" id="confirmOverlay">
+  <div class="modal confirm-modal">
+    <h3 id="confirmTitle">Eliminar</h3>
+    <p id="confirmMsg">¿Estás seguro? Esta acción no se puede deshacer.</p>
+    <div class="confirm-actions">
+      <button class="btn btn-outline" style="flex:1" onclick="closeConfirm()">Cancelar</button>
+      <button class="btn-danger" id="confirmOkBtn">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const MONTHS=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const COLORS=['#1D9E75','#1D4ED8','#92400E','#4C1D95','#991B1B','#065F46'];
+
+const db={
+  depts:[
+    {id:'d1',name:'Depto. 301',address:'Av. Arturo Prat 456, Iquique',rolDpto:'1234-301',rolBodega:'1234-B1',rolEstac:'1234-E1',gc:15000,floor:'3er piso'},
+    {id:'d2',name:'Depto. 104',address:'Pasaje Las Dunas 78, Iquique',rolDpto:'5678-104',rolBodega:'',rolEstac:'5678-E3',gc:12000,floor:'1er piso'},
+    {id:'d3',name:'Depto. 502',address:'Calle Baquedano 112, Iquique',rolDpto:'9012-502',rolBodega:'9012-B2',rolEstac:'9012-E5',gc:18000,floor:'5to piso'},
+    {id:'d4',name:'Depto. 203',address:'Av. Arturo Prat 456, Iquique',rolDpto:'1234-203',rolBodega:'',rolEstac:'',gc:15000,floor:'2do piso'}
+  ],
+  tenants:[
+    {id:'t1',name:'Carolina Fuentes',rut:'12.345.678-9',phone:'+56 9 8765 4321',email:'carolina@mail.cl',deptId:'d1',rent:420000,due:5,start:'2024-01-05',payments:{0:'paid',1:'paid',2:'paid',3:'paid',4:'pending',5:null,6:null,7:null,8:null,9:null,10:null,11:null},vouchers:{}},
+    {id:'t2',name:'Marco Tapia',rut:'9.876.543-2',phone:'+56 9 1234 5678',email:'marco@mail.cl',deptId:'d2',rent:350000,due:10,start:'2024-01-10',payments:{0:'paid',1:'paid',2:'overdue',3:'overdue',4:'pending',5:null,6:null,7:null,8:null,9:null,10:null,11:null},vouchers:{}},
+    {id:'t3',name:'Valentina Rojas',rut:'14.567.890-K',phone:'+56 9 5555 9999',email:'vale@mail.cl',deptId:'d3',rent:580000,due:1,start:'2024-01-01',payments:{0:'paid',1:'paid',2:'paid',3:'paid',4:'paid',5:null,6:null,7:null,8:null,9:null,10:null,11:null},vouchers:{}},
+    {id:'t4',name:'Rodrigo Pérez',rut:'11.111.111-1',phone:'+56 9 4444 3333',email:'rodrigo@mail.cl',deptId:'d4',rent:390000,due:15,start:'2024-02-15',payments:{0:'paid',1:'overdue',2:'overdue',3:'pending',4:'pending',5:null,6:null,7:null,8:null,9:null,10:null,11:null},vouchers:{}}
+  ],
+  adminUsers:[
+    {id:'u1',name:'Administrador Principal',username:'admin',password:'admin123',role:'admin',email:'admin@inmopago.cl',lastAccess:'01/06/2026'},
+    {id:'u2',name:'Sofía Morales',username:'smorales',password:'sofia456',role:'viewer',email:'sofia@inmopago.cl',lastAccess:'30/05/2026'}
+  ]
+};
+
+let currentTenant=null,currentAdminUser=null,uploadedFile=null,editingUserId=null;
+
+/* ── HELPERS ── */
+function formatRut(el){let v=el.value.replace(/[^0-9kK]/g,'');if(v.length>1)v=v.slice(0,-1).replace(/\B(?=(\d{3})+(?!\d))/g,'.')+'-'+v.slice(-1).toUpperCase();el.value=v;}
+function togglePass(id,btn){const el=document.getElementById(id);const s=el.type==='password';el.type=s?'text':'password';btn.querySelector('i').className=s?'ti ti-eye-off':'ti ti-eye';}
+function avatarColor(n){return COLORS[n.charCodeAt(0)%COLORS.length];}
+function initials(n){return n.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();}
+function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');window.scrollTo(0,0);}
+function showToast(id,msg,ok=true){const el=document.getElementById(id);el.className='toast '+(ok?'ok':'err');el.innerHTML=(ok?'<i class="ti ti-check"></i>':'<i class="ti ti-alert-circle"></i>')+' '+msg;setTimeout(()=>el.className='toast',3500);}
+
+/* ── ADMIN AUTH ── */
+function handleAdminClick(){
+  if(currentAdminUser){
+    const isAdmin=document.getElementById('screenAdmin').classList.contains('active');
+    if(isAdmin)logoutAdmin();else{renderAdmin();showScreen('screenAdmin');}
+  } else {
+    document.getElementById('al_user').value='';
+    document.getElementById('al_pass').value='';
+    document.getElementById('adminLoginError').className='alert alert-err';
+    document.getElementById('adminLoginOverlay').classList.add('visible');
+    setTimeout(()=>document.getElementById('al_user').focus(),150);
+  }
+}
+function closeAdminLogin(){document.getElementById('adminLoginOverlay').classList.remove('visible');}
+function doAdminLogin(){
+  const u=document.getElementById('al_user').value.trim(),p=document.getElementById('al_pass').value;
+  const found=db.adminUsers.find(x=>x.username===u&&x.password===p);
+  if(!found){document.getElementById('adminLoginError').className='alert alert-err show';return;}
+  found.lastAccess=new Date().toLocaleDateString('es-CL');
+  currentAdminUser=found;
+  document.getElementById('adminLoginOverlay').classList.remove('visible');
+  document.getElementById('adminToggle').classList.add('active');
+  document.getElementById('adminLbl').textContent='Salir admin';
+  document.getElementById('adminChip').style.display='flex';
+  document.getElementById('adminChipName').textContent=found.name.split(' ')[0];
+  renderAdmin();showScreen('screenAdmin');
+}
+function logoutAdmin(){
+  currentAdminUser=null;
+  document.getElementById('adminToggle').classList.remove('active');
+  document.getElementById('adminLbl').textContent='Panel admin';
+  document.getElementById('adminChip').style.display='none';
+  showScreen(currentTenant?'screenTenant':'screenLogin');
+}
+
+/* ── TABS ── */
+function switchTab(e,id){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  if(e&&e.target)e.target.closest('.tab-btn').classList.add('active');
+  else document.querySelectorAll('.tab-btn').forEach(b=>{if(b.getAttribute('onclick')&&b.getAttribute('onclick').includes("'"+id+"'"))b.classList.add('active');});
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if(['tabTenants','tabDepts','tabSummary','tabUsers'].includes(id))renderAdmin();
+  if(id==='tabNewTenant')populateDeptSelect();
+  if(id==='tabUsers')closeUserForm();
+}
+
+/* ── RENDER ADMIN ── */
+function renderAdmin(){
+  const allPaid=db.tenants.flatMap(t=>Object.values(t.payments).filter(v=>v==='paid'));
+  const allOv=db.tenants.flatMap(t=>Object.values(t.payments).filter(v=>v==='overdue'));
+  const totalRec=db.tenants.reduce((s,t)=>s+Object.values(t.payments).filter(v=>v==='paid').length*t.rent,0);
+  const se=document.getElementById('adminStats');
+  if(se)se.innerHTML=`
+    <div class="stat-card"><div class="stat-lbl">Total recaudado</div><div class="stat-val green">$${(totalRec/1000000).toFixed(1)}M</div></div>
+    <div class="stat-card"><div class="stat-lbl">Cuotas pagadas</div><div class="stat-val blue">${allPaid.length}</div></div>
+    <div class="stat-card"><div class="stat-lbl">En mora</div><div class="stat-val amber">${allOv.length}</div></div>
+    <div class="stat-card"><div class="stat-lbl">Arrendatarios</div><div class="stat-val">${db.tenants.length}</div></div>
+    <div class="stat-card"><div class="stat-lbl">Departamentos</div><div class="stat-val">${db.depts.length}</div></div>`;
+
+  const sL={paid:'Al día',pending:'Pendiente',overdue:'Mora'};
+  const sC={paid:'pill-paid',pending:'pill-pending',overdue:'pill-overdue'};
+  let rows='';
+  db.tenants.forEach(t=>{
+    const ov=Object.entries(t.payments).filter(([,v])=>v==='overdue');
+    const pe=Object.entries(t.payments).filter(([,v])=>v==='pending');
+    const next=ov.length>0?ov[0]:(pe.length>0?pe[0]:null);
+    const st=ov.length>0?'overdue':(pe.length>0?'pending':'paid');
+    const amt=next?'$'+(t.rent+(st==='overdue'?Math.round(t.rent*.03):0)).toLocaleString('es-CL'):'—';
+    const dept=db.depts.find(d=>d.id===t.deptId);
+    const vc=t.vouchers?Object.keys(t.vouchers).length:0;
+    rows+=`<tr><td style="font-weight:600">${t.name}</td><td>${t.rut}</td><td>${t.phone||'—'}</td><td>${dept?dept.name:'—'}</td><td>Día ${t.due}</td><td><span class="pill ${sC[st]}">${sL[st]}</span></td><td style="text-align:right;font-weight:600">${amt}</td><td style="text-align:center">${vc>0?`<span class="comprobante-badge"><i class="ti ti-paperclip"></i>${vc}</span>`:'—'}</td><td style="text-align:center;white-space:nowrap"><button class="btn-ghost btn-sm" onclick="openEditTenant('${t.id}')" title="Editar"><i class="ti ti-pencil"></i></button> <button class="btn-ghost btn-sm danger" onclick="confirmDeleteTenant('${t.id}')" title="Eliminar"><i class="ti ti-trash"></i></button></td></tr>`;
+  });
+  const tb=document.getElementById('tenantsBody');if(tb)tb.innerHTML=rows;
+
+  let dr='';
+  db.depts.forEach(d=>{
+    const ten=db.tenants.find(t=>t.deptId===d.id);
+    dr+=`<tr><td style="font-weight:600">${d.name}</td><td style="font-size:11px">${d.address}</td><td>${d.rolDpto||'—'}</td><td>${d.rolBodega||'—'}</td><td>${d.rolEstac||'—'}</td><td>$${(d.gc||0).toLocaleString('es-CL')}</td><td>${ten?ten.name.split(' ')[0]:'<span class="pill pill-vacant">Vacante</span>'}</td><td><span class="pill ${ten?'pill-paid':'pill-vacant'}">${ten?'Ocupado':'Vacante'}</span></td><td style="text-align:center;white-space:nowrap"><button class="btn-ghost btn-sm" onclick="openEditDept('${d.id}')" title="Editar"><i class="ti ti-pencil"></i></button> <button class="btn-ghost btn-sm danger" onclick="confirmDeleteDept('${d.id}')" title="Eliminar"><i class="ti ti-trash"></i></button></td></tr>`;
+  });
+  const db2=document.getElementById('deptsBody');if(db2)db2.innerHTML=dr;
+
+  let sh='';
+  db.depts.forEach(d=>{
+    const ten=db.tenants.find(t=>t.deptId===d.id);
+    if(!ten){sh+=`<div class="sum-card"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:13px;font-weight:600">${d.name}</div><div style="font-size:11px;color:var(--text2)">${d.address}</div></div><span class="pill pill-vacant">Vacante</span></div></div>`;return;}
+    const paid=Object.values(ten.payments).filter(v=>v==='paid').length;
+    const total=Object.values(ten.payments).filter(v=>v!==null).length;
+    const pct=total>0?Math.round(paid/total*100):0;
+    const rec=paid*ten.rent;
+    const ov=Object.values(ten.payments).filter(v=>v==='overdue').length;
+    const vc=ten.vouchers?Object.keys(ten.vouchers).length:0;
+    sh+=`<div class="sum-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+        <div><div style="font-size:13px;font-weight:600">${d.name}</div><div style="font-size:11px;color:var(--text2)"><i class="ti ti-user" style="font-size:11px"></i> ${ten.name} · Rol: ${d.rolDpto} · G.Com (arrendador): $${d.gc.toLocaleString('es-CL')}</div></div>
+        <div style="text-align:right;flex-shrink:0;margin-left:12px"><div style="font-size:16px;font-weight:700;color:var(--brand-dark)">$${rec.toLocaleString('es-CL')}</div><div style="font-size:11px;color:var(--text2)">recaudado${vc>0?` · <span style="color:#1D4ED8">${vc} comprobante${vc>1?'s':''}</span>`:''}</div></div>
+      </div>
+      <div class="progress-bg"><div class="progress-fill" style="width:${pct}%"></div></div>
+      <div class="progress-labels"><span>${paid}/${total} cuotas · arriendo $${ten.rent.toLocaleString('es-CL')}</span><span>${pct}%${ov>0?` · <span style="color:#991B1B">${ov} mora</span>`:''}</span></div>
+    </div>`;
+  });
+  const sw=document.getElementById('summaryWrap');if(sw)sw.innerHTML=sh;
+  renderUsersTable();
+}
+
+/* ── USERS ── */
+function renderUsersTable(){
+  const tbody=document.getElementById('usersBody');if(!tbody)return;
+  const isSelf=currentAdminUser?.id;
+  let rows='';
+  db.adminUsers.forEach(u=>{
+    const isCur=u.id===isSelf;
+    rows+=`<tr>
+      <td><div class="u-avatar" style="background:${avatarColor(u.name)}">${initials(u.name)}</div></td>
+      <td style="font-weight:600">${u.name}${isCur?' <span style="font-size:10px;color:var(--text3)">(tú)</span>':''}</td>
+      <td>${u.username}</td>
+      <td><span class="pill ${u.role==='admin'?'pill-admin':'pill-viewer'}">${u.role==='admin'?'Administrador':'Solo lectura'}</span></td>
+      <td style="color:var(--text2)">${u.lastAccess||'—'}</td>
+      <td style="text-align:center">
+        <button class="btn-ghost btn-sm" onclick="openUserForm('${u.id}')" title="Editar"><i class="ti ti-pencil"></i></button>
+        ${isCur?'':` <button class="btn-ghost btn-sm danger" onclick="confirmDeleteUser('${u.id}')" title="Eliminar"><i class="ti ti-trash"></i></button>`}
+      </td></tr>`;
+  });
+  tbody.innerHTML=rows;
+}
+function openUserForm(uid){
+  editingUserId=uid||null;
+  document.getElementById('userFormWrap').style.display='block';
+  const isEdit=!!uid;
+  document.getElementById('userFormTitle').innerHTML=`<i class="ti ti-${isEdit?'pencil':'user-plus'}" style="color:var(--brand)"></i> ${isEdit?'Editar usuario':'Nuevo usuario'}`;
+  document.getElementById('userSaveLabel').textContent=isEdit?'Guardar cambios':'Crear usuario';
+  document.getElementById('editPassHint').textContent=isEdit?'Deja en blanco para mantener la contraseña actual.':'';
+  document.getElementById('u_passLabel').textContent=isEdit?'Nueva contraseña':'Contraseña *';
+  document.getElementById('u_pass2Label').textContent=isEdit?'Confirmar nueva contraseña':'Confirmar contraseña *';
+  if(isEdit){
+    const u=db.adminUsers.find(x=>x.id===uid);if(!u)return;
+    document.getElementById('u_id').value=u.id;
+    document.getElementById('u_name').value=u.name;
+    document.getElementById('u_username').value=u.username;
+    document.getElementById('u_email').value=u.email||'';
+    document.getElementById('u_role').value=u.role;
+    document.getElementById('u_pass').value='';
+    document.getElementById('u_pass2').value='';
+  } else {
+    document.getElementById('u_id').value='';
+    ['u_name','u_username','u_email','u_pass','u_pass2'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    document.getElementById('u_role').value='admin';
+  }
+  setTimeout(()=>document.getElementById('userFormWrap').scrollIntoView({behavior:'smooth',block:'start'}),100);
+}
+function closeUserForm(){editingUserId=null;document.getElementById('userFormWrap').style.display='none';}
+function saveUser(){
+  const name=document.getElementById('u_name').value.trim(),username=document.getElementById('u_username').value.trim();
+  const email=document.getElementById('u_email').value.trim(),role=document.getElementById('u_role').value;
+  const pass=document.getElementById('u_pass').value,pass2=document.getElementById('u_pass2').value;
+  const isEdit=!!editingUserId;
+  if(!name||!username){showToast('toastUser','Nombre y usuario son obligatorios.',false);return;}
+  if(!isEdit&&!pass){showToast('toastUser','La contraseña es obligatoria para nuevos usuarios.',false);return;}
+  if(pass&&pass.length<6){showToast('toastUser','La contraseña debe tener al menos 6 caracteres.',false);return;}
+  if(pass&&pass!==pass2){showToast('toastUser','Las contraseñas no coinciden.',false);return;}
+  if(db.adminUsers.find(u=>u.username===username&&u.id!==editingUserId)){showToast('toastUser','Ese nombre de usuario ya está en uso.',false);return;}
+  if(isEdit){
+    const u=db.adminUsers.find(x=>x.id===editingUserId);
+    u.name=name;u.username=username;u.email=email;u.role=role;if(pass)u.password=pass;
+    if(u.id===currentAdminUser?.id){currentAdminUser=u;document.getElementById('adminChipName').textContent=u.name.split(' ')[0];}
+    showToast('toastUser',`${name} actualizado correctamente.`);
+  } else {
+    db.adminUsers.push({id:'u'+Date.now(),name,username,password:pass,role,email,lastAccess:'—'});
+    showToast('toastUser',`${name} creado correctamente.`);
+  }
+  closeUserForm();renderUsersTable();
+}
+function confirmDeleteUser(uid){
+  const u=db.adminUsers.find(x=>x.id===uid);if(!u)return;
+  document.getElementById('confirmTitle').textContent='Eliminar usuario';
+  document.getElementById('confirmMsg').textContent=`¿Eliminar a "${u.name}"? Esta acción no se puede deshacer.`;
+  document.getElementById('confirmOkBtn').onclick=()=>{
+    db.adminUsers=db.adminUsers.filter(x=>x.id!==uid);
+    closeConfirm();showToast('toastUser','Usuario eliminado.');renderUsersTable();
+  };
+  document.getElementById('confirmOverlay').classList.add('visible');
+}
+function closeConfirm(){document.getElementById('confirmOverlay').classList.remove('visible');}
+
+/* ── TENANT FLOW ── */
+function doLogin(){
+  const rut=document.getElementById('rutInput').value.trim();
+  const t=db.tenants.find(x=>x.rut.toLowerCase()===rut.toLowerCase());
+  const err=document.getElementById('loginError');
+  if(!t){err.className='alert alert-err show';return;}
+  err.className='alert alert-err';currentTenant=t;showTenant();
+}
+function doLogout(){currentTenant=null;document.getElementById('rutInput').value='';showScreen('screenLogin');}
+function showTenant(){
+  const t=currentTenant,dept=db.depts.find(d=>d.id===t.deptId);
+  document.getElementById('tenantName').textContent='Bienvenida/o, '+t.name;
+  document.getElementById('tenantSub').textContent=t.rut+' · '+(dept?dept.name:'Sin departamento');
+  renderDeptCard(t,dept);showScreen('screenTenant');
+}
+function renderDeptCard(t,dept){
+  if(!dept){document.getElementById('deptCardWrap').innerHTML='<p style="color:var(--text2)">No tienes departamento asignado.</p>';return;}
+  const ov=Object.entries(t.payments).filter(([,v])=>v==='overdue').map(([k])=>parseInt(k));
+  const pe=Object.entries(t.payments).filter(([,v])=>v==='pending').map(([k])=>parseInt(k));
+  const next=ov.length>0?ov[0]:(pe.length>0?pe[0]:null);
+  const st=ov.length>0?'overdue':(pe.length>0?'pending':'paid');
+  const sL={overdue:'Mora',pending:'Pendiente',paid:'Al día'};
+  const sC={overdue:'badge-overdue',pending:'badge-pending',paid:'badge-paid'};
+  let pills='';
+  for(let i=0;i<12;i++){
+    const pmt=t.payments[i];
+    if(pmt===null){pills+=`<div class="mpill mlocked"><span>${MONTHS[i].slice(0,3)}</span><span class="ms">—</span></div>`;continue;}
+    const cls=pmt==='paid'?'mpaid':pmt==='pending'?'mpending':pmt==='overdue'?'moverdue':'';
+    const icon=pmt==='paid'?'✓':pmt==='overdue'?'!':'·';
+    pills+=`<div class="mpill ${cls}" onclick="selectMonth(${i})" id="pill-${i}"><span>${MONTHS[i].slice(0,3)}</span><span class="ms">${icon}</span></div>`;
+  }
+  uploadedFile=null;
+  document.getElementById('deptCardWrap').innerHTML=`
+  <div class="card">
+    <div class="dept-header">
+      <div class="dept-icon"><i class="ti ti-door"></i></div>
+      <div style="flex:1">
+        <div style="font-size:15px;font-weight:600">${dept.name} — ${dept.floor}</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px"><i class="ti ti-map-pin" style="font-size:12px"></i> ${dept.address}</div>
+      </div>
+      <span class="badge ${sC[st]}">${sL[st]}</span>
+    </div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:8px">Selecciona el mes a pagar:</div>
+    <div class="months-grid">${pills}</div>
+    <div class="pay-box" id="paySection">
+      ${next!==null?renderPayDetail(t,next):'<div style="text-align:center;padding:8px 0;color:var(--text2);font-size:13px"><i class="ti ti-circle-check" style="font-size:24px;color:#065F46;display:block;margin-bottom:6px"></i>No tienes cuotas pendientes</div>'}
+    </div>
+  </div>`;
+}
+function renderPayDetail(t,month){
+  const isOv=t.payments[month]==='overdue';
+  const multa=isOv?Math.round(t.rent*.03):0;
+  const total=t.rent+multa;
+  const fileHtml=uploadedFile?
+    `<div class="file-pill">
+      <div class="file-ico ${uploadedFile.type==='pdf'?'pdf':'img'}"><i class="ti ti-${uploadedFile.type==='pdf'?'file-type-pdf':'photo'}" style="font-size:16px"></i></div>
+      <div style="flex:1;min-width:0"><div class="file-name">${uploadedFile.name}</div><div class="file-sz">${uploadedFile.size}</div></div>
+      <button class="btn-ghost" onclick="removeFile(${month})" style="padding:4px 6px"><i class="ti ti-x"></i></button>
+    </div>`:
+    `<div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="handleDrop(event,${month})">
+      <input type="file" id="fileInput" accept=".jpg,.jpeg,.pdf" onchange="handleFile(event,${month})"/>
+      <i class="ti ti-cloud-upload"></i>
+      <div class="uz-title">Adjunta tu comprobante de pago</div>
+      <div class="uz-sub">Toca aquí o arrastra · JPG o PDF · máx. 5 MB</div>
+    </div>
+    <div class="upload-req" id="uploadRequired"><i class="ti ti-alert-circle"></i> Debes adjuntar el comprobante primero.</div>`;
+  return `
+    <div class="pay-row"><span class="pay-lbl">Arriendo ${MONTHS[month]} ${new Date().getFullYear()}</span><span class="pay-val">$${t.rent.toLocaleString('es-CL')}</span></div>
+    ${isOv?`<div class="pay-row"><span class="pay-lbl" style="color:var(--danger)">Multa por mora (3%)</span><span class="pay-val" style="color:var(--danger)">$${multa.toLocaleString('es-CL')}</span></div>`:''}
+    <div class="sep"></div>
+    <div class="pay-row"><span class="pay-lbl" style="font-weight:600">Total a pagar</span><span class="pay-total-val">$${total.toLocaleString('es-CL')}</span></div>
+    <div class="pay-row"><span class="pay-lbl">Vence día</span><span class="pay-val">${t.due} de cada mes</span></div>
+    <div style="margin-top:.85rem">
+      <div style="font-size:12px;font-weight:600;margin-bottom:6px"><i class="ti ti-paperclip" style="vertical-align:-1px"></i> Comprobante de pago</div>
+      ${fileHtml}
+    </div>
+    <div class="pay-btns">
+      <button class="btn btn-outline" onclick="cancelPay()"><i class="ti ti-x"></i> Cancelar</button>
+      <button class="btn btn-brand" onclick="doPay(${month})"><i class="ti ti-check"></i> Confirmar pago</button>
+    </div>`;
+}
+function selectMonth(i){
+  const t=currentTenant;
+  if(!t.payments[i]||t.payments[i]==='paid')return;
+  uploadedFile=null;
+  document.querySelectorAll('.mpill').forEach(el=>el.classList.remove('selected'));
+  const pill=document.getElementById('pill-'+i);if(pill)pill.classList.add('selected');
+  document.getElementById('paySection').innerHTML=renderPayDetail(t,i);
+}
+function cancelPay(){uploadedFile=null;const t=currentTenant,dept=db.depts.find(d=>d.id===t.deptId);renderDeptCard(t,dept);}
+function handleFile(e,month){const f=e.target.files[0];if(f)processFile(f,month);}
+function handleDrop(e,month){e.preventDefault();document.getElementById('uploadZone')?.classList.remove('drag');const f=e.dataTransfer.files[0];if(f)processFile(f,month);}
+function processFile(file,month){
+  const ext=file.name.split('.').pop().toLowerCase();
+  if(!['jpg','jpeg','pdf'].includes(ext)){alert('Solo se aceptan archivos JPG o PDF.');return;}
+  if(file.size>5*1024*1024){alert('El archivo no puede superar los 5 MB.');return;}
+  const sz=file.size>1024*1024?(file.size/1024/1024).toFixed(1)+' MB':Math.round(file.size/1024)+' KB';
+  uploadedFile={name:file.name,size:sz,type:ext==='pdf'?'pdf':'img'};
+  document.getElementById('paySection').innerHTML=renderPayDetail(currentTenant,month);
+}
+function removeFile(month){uploadedFile=null;document.getElementById('paySection').innerHTML=renderPayDetail(currentTenant,month);}
+function doPay(month){
+  if(!uploadedFile){const r=document.getElementById('uploadRequired');if(r)r.style.display='flex';return;}
+  const t=currentTenant,dept=db.depts.find(d=>d.id===t.deptId);
+  const isOv=t.payments[month]==='overdue';
+  const multa=isOv?Math.round(t.rent*.03):0;
+  const total=t.rent+multa;
+  const now=new Date(),folio='F'+Date.now().toString().slice(-8);
+  if(!t.vouchers)t.vouchers={};
+  t.vouchers[month]={file:uploadedFile.name,date:now.toLocaleDateString('es-CL'),folio};
+  document.getElementById('modalReceipt').innerHTML=`
+    <div class="r-row"><span>Arrendatario</span><span>${t.name}</span></div>
+    <div class="r-row"><span>Departamento</span><span>${dept.name}</span></div>
+    <div class="r-row"><span>Período</span><span>${MONTHS[month]} ${now.getFullYear()}</span></div>
+    <div class="r-row"><span>Total pagado</span><span>$${total.toLocaleString('es-CL')}</span></div>
+    <div class="r-row"><span>Fecha</span><span>${now.toLocaleDateString('es-CL')}</span></div>
+    <div class="r-row"><span>Folio</span><span>${folio}</span></div>
+    <div class="r-file"><i class="ti ti-${uploadedFile.type==='pdf'?'file-type-pdf':'photo'}" style="font-size:17px;color:${uploadedFile.type==='pdf'?'#991B1B':'#065F46'}"></i>
+    <span style="font-size:12px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${uploadedFile.name}</span>
+    <span style="font-size:11px;color:var(--text3)">${uploadedFile.size}</span></div>`;
+  t.payments[month]='paid';uploadedFile=null;
+  document.getElementById('modalOverlay').classList.add('visible');
+}
+function closeModal(){document.getElementById('modalOverlay').classList.remove('visible');renderDeptCard(currentTenant,db.depts.find(d=>d.id===currentTenant.deptId));}
+
+/* ── FORMS ── */
+function populateDeptSelect(){
+  const sel=document.getElementById('nt_dept');if(!sel)return;
+  const occ=new Set(db.tenants.map(t=>t.deptId));
+  sel.innerHTML='<option value="">— Seleccionar —</option>';
+  db.depts.forEach(d=>{const o=document.createElement('option');o.value=d.id;o.textContent=d.name+(occ.has(d.id)?' (ocupado)':'');if(occ.has(d.id))o.style.color='var(--text3)';sel.appendChild(o);});
+}
+function saveTenant(){
+  const name=document.getElementById('nt_name').value.trim(),rut=document.getElementById('nt_rut').value.trim();
+  const phone=document.getElementById('nt_phone').value.trim(),email=document.getElementById('nt_email').value.trim();
+  const deptId=document.getElementById('nt_dept').value,rent=parseInt(document.getElementById('nt_rent').value)||0;
+  const due=parseInt(document.getElementById('nt_due').value)||5,start=document.getElementById('nt_start').value;
+  if(!name||!rut||!deptId||!rent){showToast('toastTenant','Completa los campos obligatorios (*)',false);return;}
+  if(db.tenants.find(t=>t.rut===rut)){showToast('toastTenant','Ya existe un arrendatario con ese RUT',false);return;}
+  db.tenants.push({id:'t'+Date.now(),name,rut,phone,email,deptId,rent,due,start,payments:{0:null,1:null,2:null,3:null,4:'pending',5:null,6:null,7:null,8:null,9:null,10:null,11:null},vouchers:{}});
+  showToast('toastTenant',`${name} registrado/a correctamente.`);clearTenantForm();
+}
+function clearTenantForm(){['nt_name','nt_rut','nt_phone','nt_email','nt_rent','nt_due','nt_start'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});const s=document.getElementById('nt_dept');if(s)s.value='';}
+function saveDept(){
+  const name=document.getElementById('nd_name').value.trim(),address=document.getElementById('nd_addr').value.trim(),rolDpto=document.getElementById('nd_rolDpto').value.trim();
+  if(!name||!address){showToast('toastDept','Completa nombre y dirección del departamento',false);return;}
+  db.depts.push({id:'d'+Date.now(),name,address,rolDpto,rolBodega:document.getElementById('nd_rolBodega').value.trim(),rolEstac:document.getElementById('nd_rolEstac').value.trim(),gc:parseInt(document.getElementById('nd_gc').value)||0,floor:document.getElementById('nd_floor').value.trim()});
+  showToast('toastDept',`${name} registrado correctamente.`);clearDeptForm();
+}
+function clearDeptForm(){['nd_name','nd_addr','nd_rolDpto','nd_rolBodega','nd_rolEstac','nd_gc','nd_floor'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});}
+
+/* ── EDIT / DELETE DEPT ── */
+function openEditDept(id){
+  const d=db.depts.find(x=>x.id===id);if(!d)return;
+  document.getElementById('ed_id').value=d.id;
+  document.getElementById('ed_name').value=d.name;
+  document.getElementById('ed_addr').value=d.address;
+  document.getElementById('ed_rolDpto').value=d.rolDpto||'';
+  document.getElementById('ed_rolBodega').value=d.rolBodega||'';
+  document.getElementById('ed_rolEstac').value=d.rolEstac||'';
+  document.getElementById('ed_gc').value=d.gc||'';
+  document.getElementById('ed_floor').value=d.floor||'';
+  document.getElementById('btnTabEditDept').style.display='flex';
+  switchTab(null,'tabEditDept');
+}
+function updateDept(){
+  const id=document.getElementById('ed_id').value;
+  const name=document.getElementById('ed_name').value.trim();
+  const address=document.getElementById('ed_addr').value.trim();
+  if(!name||!address){showToast('toastEditDept','Nombre y dirección son obligatorios.',false);return;}
+  const d=db.depts.find(x=>x.id===id);if(!d)return;
+  d.name=name;d.address=address;
+  d.rolDpto=document.getElementById('ed_rolDpto').value.trim();
+  d.rolBodega=document.getElementById('ed_rolBodega').value.trim();
+  d.rolEstac=document.getElementById('ed_rolEstac').value.trim();
+  d.gc=parseInt(document.getElementById('ed_gc').value)||0;
+  d.floor=document.getElementById('ed_floor').value.trim();
+  document.getElementById('btnTabEditDept').style.display='none';
+  renderAdmin();
+  switchTab(null,'tabDepts');
+}
+function confirmDeleteDept(id){
+  const d=db.depts.find(x=>x.id===id);if(!d)return;
+  const hasTenant=db.tenants.find(t=>t.deptId===id);
+  if(hasTenant){
+    document.getElementById('confirmTitle').textContent='No se puede eliminar';
+    document.getElementById('confirmMsg').textContent='"'+d.name+'" tiene a '+hasTenant.name+' asignado. Elimina o reasigna al arrendatario primero.';
+    const btn=document.getElementById('confirmOkBtn');
+    const orig=btn.onclick;btn.textContent='Entendido';
+    btn.onclick=()=>{closeConfirm();btn.textContent='Eliminar';};
+    document.getElementById('confirmOverlay').classList.add('visible');
+    return;
+  }
+  document.getElementById('confirmTitle').textContent='Eliminar departamento';
+  document.getElementById('confirmMsg').textContent='¿Eliminar "'+d.name+'"? Esta acción no se puede deshacer.';
+  document.getElementById('confirmOkBtn').textContent='Eliminar';
+  document.getElementById('confirmOkBtn').onclick=()=>{
+    db.depts=db.depts.filter(x=>x.id!==id);
+    closeConfirm();renderAdmin();
+  };
+  document.getElementById('confirmOverlay').classList.add('visible');
+}
+
+/* ── EDIT / DELETE TENANT ── */
+function openEditTenant(id){
+  const t=db.tenants.find(x=>x.id===id);if(!t)return;
+  document.getElementById('et_id').value=t.id;
+  document.getElementById('et_name').value=t.name;
+  document.getElementById('et_rut').value=t.rut;
+  document.getElementById('et_phone').value=t.phone||'';
+  document.getElementById('et_email').value=t.email||'';
+  document.getElementById('et_rent').value=t.rent;
+  document.getElementById('et_due').value=t.due;
+  document.getElementById('et_start').value=t.start||'';
+  const sel=document.getElementById('et_dept');
+  const occ=new Set(db.tenants.filter(x=>x.id!==id).map(x=>x.deptId));
+  sel.innerHTML='<option value="">— Seleccionar —</option>';
+  db.depts.forEach(d=>{
+    const o=document.createElement('option');
+    o.value=d.id;o.textContent=d.name+(occ.has(d.id)?' (ocupado)':'');
+    if(occ.has(d.id))o.style.color='var(--text3)';
+    sel.appendChild(o);
+  });
+  sel.value=t.deptId;
+  document.getElementById('btnTabEditTenant').style.display='flex';
+  switchTab(null,'tabEditTenant');
+}
+function updateTenant(){
+  const id=document.getElementById('et_id').value;
+  const name=document.getElementById('et_name').value.trim();
+  const rut=document.getElementById('et_rut').value.trim();
+  const deptId=document.getElementById('et_dept').value;
+  const rent=parseInt(document.getElementById('et_rent').value)||0;
+  const due=parseInt(document.getElementById('et_due').value)||5;
+  if(!name||!rut||!deptId||!rent){showToast('toastEditTenant','Completa los campos obligatorios (*)',false);return;}
+  if(db.tenants.find(x=>x.rut===rut&&x.id!==id)){showToast('toastEditTenant','Ya existe otro arrendatario con ese RUT.',false);return;}
+  const t=db.tenants.find(x=>x.id===id);if(!t)return;
+  t.name=name;t.rut=rut;
+  t.phone=document.getElementById('et_phone').value.trim();
+  t.email=document.getElementById('et_email').value.trim();
+  t.deptId=deptId;t.rent=rent;t.due=due;
+  t.start=document.getElementById('et_start').value;
+  document.getElementById('btnTabEditTenant').style.display='none';
+  renderAdmin();
+  switchTab(null,'tabTenants');
+}
+function confirmDeleteTenant(id){
+  const t=db.tenants.find(x=>x.id===id);if(!t)return;
+  document.getElementById('confirmTitle').textContent='Eliminar arrendatario';
+  document.getElementById('confirmMsg').textContent='¿Eliminar a "'+t.name+'"? Se borrarán todos sus pagos y comprobantes. Esta acción no se puede deshacer.';
+  document.getElementById('confirmOkBtn').textContent='Eliminar';
+  document.getElementById('confirmOkBtn').onclick=()=>{
+    db.tenants=db.tenants.filter(x=>x.id!==id);
+    closeConfirm();renderAdmin();
+  };
+  document.getElementById('confirmOverlay').classList.add('visible');
+}
+
+</script>
+</body>
+</html>
