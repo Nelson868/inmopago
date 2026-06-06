@@ -522,43 +522,122 @@ table.tbl{width:100%;border-collapse:collapse;font-size:12px}
 </div>
 
 <script>
+<script>
+/* ═══════════════════════════════════════════════
+   SUPABASE CONFIG
+═══════════════════════════════════════════════ */
+const SB_URL = 'https://pemcvdccqikaosprvjco.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBlbWN2ZGNjcWlrYW9zcHJ2amNvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTg0MDgsImV4cCI6MjA5NjI3NDQwOH0.yoWDLoODRhikXVkmB8qW3aMP74tYnh7bSwQtuVsR_Zw';
+const HEADERS = { 'apikey': SB_KEY, 'Authorization': 'Bearer '+SB_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation' };
+
+async function sbGet(table, params='') {
+  const r = await fetch(`${SB_URL}/rest/v1/${table}?${params}`, { headers: HEADERS });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+async function sbPost(table, body) {
+  const r = await fetch(`${SB_URL}/rest/v1/${table}`, { method:'POST', headers: HEADERS, body: JSON.stringify(body) });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+async function sbPatch(table, id, body) {
+  const r = await fetch(`${SB_URL}/rest/v1/${table}?id=eq.${id}`, { method:'PATCH', headers: HEADERS, body: JSON.stringify(body) });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+async function sbDelete(table, id) {
+  const r = await fetch(`${SB_URL}/rest/v1/${table}?id=eq.${id}`, { method:'DELETE', headers: HEADERS });
+  if (!r.ok) throw new Error(await r.text());
+}
+async function sbUpload(path, file) {
+  const r = await fetch(`${SB_URL}/storage/v1/object/comprobantes/${path}`, {
+    method:'POST',
+    headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer '+SB_KEY, 'Content-Type': file.type, 'x-upsert': 'true' },
+    body: file
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return `${SB_URL}/storage/v1/object/public/comprobantes/${path}`;
+}
+
+/* ═══════════════════════════════════════════════
+   CONSTANTS & STATE
+═══════════════════════════════════════════════ */
 const MONTHS=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 const COLORS=['#1D9E75','#1D4ED8','#92400E','#4C1D95','#991B1B','#065F46'];
+const ANIO = new Date().getFullYear();
 
-const db={
-  depts:[
-    {id:'d1',name:'Depto. 301',address:'Av. Arturo Prat 456, Iquique',rolDpto:'1234-301',rolBodega:'1234-B1',rolEstac:'1234-E1',gc:15000,floor:'3er piso'},
-    {id:'d2',name:'Depto. 104',address:'Pasaje Las Dunas 78, Iquique',rolDpto:'5678-104',rolBodega:'',rolEstac:'5678-E3',gc:12000,floor:'1er piso'},
-    {id:'d3',name:'Depto. 502',address:'Calle Baquedano 112, Iquique',rolDpto:'9012-502',rolBodega:'9012-B2',rolEstac:'9012-E5',gc:18000,floor:'5to piso'},
-    {id:'d4',name:'Depto. 203',address:'Av. Arturo Prat 456, Iquique',rolDpto:'1234-203',rolBodega:'',rolEstac:'',gc:15000,floor:'2do piso'}
-  ],
-  tenants:[
-    {id:'t1',name:'Carolina Fuentes',rut:'12.345.678-9',phone:'+56 9 8765 4321',email:'carolina@mail.cl',deptId:'d1',rent:420000,due:5,start:'2024-01-05',payments:{0:'paid',1:'paid',2:'paid',3:'paid',4:'pending',5:null,6:null,7:null,8:null,9:null,10:null,11:null},vouchers:{}},
-    {id:'t2',name:'Marco Tapia',rut:'9.876.543-2',phone:'+56 9 1234 5678',email:'marco@mail.cl',deptId:'d2',rent:350000,due:10,start:'2024-01-10',payments:{0:'paid',1:'paid',2:'overdue',3:'overdue',4:'pending',5:null,6:null,7:null,8:null,9:null,10:null,11:null},vouchers:{}},
-    {id:'t3',name:'Valentina Rojas',rut:'14.567.890-K',phone:'+56 9 5555 9999',email:'vale@mail.cl',deptId:'d3',rent:580000,due:1,start:'2024-01-01',payments:{0:'paid',1:'paid',2:'paid',3:'paid',4:'paid',5:null,6:null,7:null,8:null,9:null,10:null,11:null},vouchers:{}},
-    {id:'t4',name:'Rodrigo Pérez',rut:'11.111.111-1',phone:'+56 9 4444 3333',email:'rodrigo@mail.cl',deptId:'d4',rent:390000,due:15,start:'2024-02-15',payments:{0:'paid',1:'overdue',2:'overdue',3:'pending',4:'pending',5:null,6:null,7:null,8:null,9:null,10:null,11:null},vouchers:{}}
-  ],
-  adminUsers:[
-    {id:'u1',name:'Administrador Principal',username:'admin',password:'admin123',role:'admin',email:'admin@inmopago.cl',lastAccess:'01/06/2026'},
-    {id:'u2',name:'Sofía Morales',username:'smorales',password:'sofia456',role:'viewer',email:'sofia@inmopago.cl',lastAccess:'30/05/2026'}
-  ]
-};
+let currentTenant=null, currentAdminUser=null, uploadedFile=null, editingUserId=null;
+// In-memory cache
+let cache = { depts:[], tenants:[], pagos:[], users:[] };
 
-let currentTenant=null,currentAdminUser=null,uploadedFile=null,editingUserId=null;
+/* ═══════════════════════════════════════════════
+   LOADING OVERLAY
+═══════════════════════════════════════════════ */
+function showLoading(msg='Cargando...') {
+  let el=document.getElementById('loadingOverlay');
+  if(!el){ el=document.createElement('div'); el.id='loadingOverlay';
+    el.style.cssText='position:fixed;inset:0;background:rgba(255,255,255,.82);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;font-size:14px;color:#5b6071';
+    el.innerHTML='<div style="width:32px;height:32px;border:3px solid #e2e4e9;border-top-color:#1D9E75;border-radius:50%;animation:spin .7s linear infinite"></div><span id="loadingMsg"></span>';
+    if(!document.getElementById('spinStyle')){ const s=document.createElement('style');s.id='spinStyle';s.textContent='@keyframes spin{to{transform:rotate(360deg)}}';document.head.appendChild(s); }
+    document.body.appendChild(el);
+  }
+  document.getElementById('loadingMsg').textContent=msg;
+  el.style.display='flex';
+}
+function hideLoading(){ const el=document.getElementById('loadingOverlay'); if(el)el.style.display='none'; }
 
-/* ── HELPERS ── */
+/* ═══════════════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════════════ */
 function formatRut(el){let v=el.value.replace(/[^0-9kK]/g,'');if(v.length>1)v=v.slice(0,-1).replace(/\B(?=(\d{3})+(?!\d))/g,'.')+'-'+v.slice(-1).toUpperCase();el.value=v;}
 function togglePass(id,btn){const el=document.getElementById(id);const s=el.type==='password';el.type=s?'text':'password';btn.querySelector('i').className=s?'ti ti-eye-off':'ti ti-eye';}
 function avatarColor(n){return COLORS[n.charCodeAt(0)%COLORS.length];}
 function initials(n){return n.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();}
 function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');window.scrollTo(0,0);}
-function showToast(id,msg,ok=true){const el=document.getElementById(id);el.className='toast '+(ok?'ok':'err');el.innerHTML=(ok?'<i class="ti ti-check"></i>':'<i class="ti ti-alert-circle"></i>')+' '+msg;setTimeout(()=>el.className='toast',3500);}
+function showToast(id,msg,ok=true){const el=document.getElementById(id);if(!el)return;el.className='toast '+(ok?'ok':'err');el.innerHTML=(ok?'<i class="ti ti-check"></i>':'<i class="ti ti-alert-circle"></i>')+' '+msg;setTimeout(()=>{if(el)el.className='toast';},3500);}
+function closeConfirm(){document.getElementById('confirmOverlay').classList.remove('visible');}
 
-/* ── ADMIN AUTH ── */
+/* ═══════════════════════════════════════════════
+   INIT — load all data on startup
+═══════════════════════════════════════════════ */
+async function init() {
+  showLoading('Iniciando aplicación...');
+  try {
+    await loadAllData();
+  } catch(e) {
+    console.error('Init error:', e);
+    // If tables don't exist yet, show setup prompt
+    if(e.message && e.message.includes('relation')) {
+      document.getElementById('screenLogin').innerHTML = `
+        <div class="login-center"><div class="login-box">
+          <div class="login-icon"><i class="ti ti-database"></i></div>
+          <h2>Configuración inicial</h2>
+          <p>Necesitas crear las tablas en Supabase. Ve al <strong>SQL Editor</strong> de tu proyecto y ejecuta el archivo <strong>schema.sql</strong> incluido.</p>
+          <button class="btn btn-brand btn-block" onclick="init()"><i class="ti ti-refresh"></i> Reintentar</button>
+        </div></div>`;
+    }
+  }
+  hideLoading();
+}
+
+async function loadAllData() {
+  const [depts, tenants, pagos] = await Promise.all([
+    sbGet('departamentos', 'order=nombre'),
+    sbGet('arrendatarios', 'order=nombre'),
+    sbGet('pagos', 'order=anio,mes')
+  ]);
+  cache.depts = depts;
+  cache.tenants = tenants;
+  cache.pagos = pagos;
+}
+
+/* ═══════════════════════════════════════════════
+   ADMIN AUTH
+═══════════════════════════════════════════════ */
 function handleAdminClick(){
   if(currentAdminUser){
     const isAdmin=document.getElementById('screenAdmin').classList.contains('active');
-    if(isAdmin)logoutAdmin();else{renderAdmin();showScreen('screenAdmin');}
+    if(isAdmin) logoutAdmin(); else { renderAdmin(); showScreen('screenAdmin'); }
   } else {
     document.getElementById('al_user').value='';
     document.getElementById('al_pass').value='';
@@ -568,19 +647,35 @@ function handleAdminClick(){
   }
 }
 function closeAdminLogin(){document.getElementById('adminLoginOverlay').classList.remove('visible');}
-function doAdminLogin(){
-  const u=document.getElementById('al_user').value.trim(),p=document.getElementById('al_pass').value;
-  const found=db.adminUsers.find(x=>x.username===u&&x.password===p);
-  if(!found){document.getElementById('adminLoginError').className='alert alert-err show';return;}
-  found.lastAccess=new Date().toLocaleDateString('es-CL');
-  currentAdminUser=found;
-  document.getElementById('adminLoginOverlay').classList.remove('visible');
-  document.getElementById('adminToggle').classList.add('active');
-  document.getElementById('adminLbl').textContent='Salir admin';
-  document.getElementById('adminChip').style.display='flex';
-  document.getElementById('adminChipName').textContent=found.name.split(' ')[0];
-  renderAdmin();showScreen('screenAdmin');
+
+async function doAdminLogin(){
+  const u=document.getElementById('al_user').value.trim();
+  const p=document.getElementById('al_pass').value;
+  if(!u||!p){document.getElementById('adminLoginError').className='alert alert-err show';return;}
+  showLoading('Verificando credenciales...');
+  try {
+    const res = await sbGet('admin_usuarios', `username=eq.${encodeURIComponent(u)}&password_hash=eq.${encodeURIComponent(p)}&select=*`);
+    if(!res||res.length===0){hideLoading();document.getElementById('adminLoginError').className='alert alert-err show';return;}
+    const found = res[0];
+    // update last access
+    await sbPatch('admin_usuarios', found.id, { ultimo_acceso: new Date().toISOString() });
+    found.ultimo_acceso = new Date().toISOString();
+    currentAdminUser = found;
+    document.getElementById('adminLoginOverlay').classList.remove('visible');
+    document.getElementById('adminToggle').classList.add('active');
+    document.getElementById('adminLbl').textContent='Salir admin';
+    document.getElementById('adminChip').style.display='flex';
+    document.getElementById('adminChipName').textContent=found.nombre.split(' ')[0];
+    hideLoading();
+    await renderAdmin();
+    showScreen('screenAdmin');
+  } catch(e) {
+    hideLoading();
+    document.getElementById('adminLoginError').className='alert alert-err show';
+    console.error(e);
+  }
 }
+
 function logoutAdmin(){
   currentAdminUser=null;
   document.getElementById('adminToggle').classList.remove('active');
@@ -589,95 +684,537 @@ function logoutAdmin(){
   showScreen(currentTenant?'screenTenant':'screenLogin');
 }
 
-/* ── TABS ── */
-function switchTab(e,id){
+/* ═══════════════════════════════════════════════
+   TABS
+═══════════════════════════════════════════════ */
+async function switchTab(e,id){
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-  if(e&&e.target)e.target.closest('.tab-btn').classList.add('active');
+  if(e&&e.target) e.target.closest('.tab-btn').classList.add('active');
   else document.querySelectorAll('.tab-btn').forEach(b=>{if(b.getAttribute('onclick')&&b.getAttribute('onclick').includes("'"+id+"'"))b.classList.add('active');});
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
   document.getElementById(id).classList.add('active');
-  if(['tabTenants','tabDepts','tabSummary','tabUsers'].includes(id))renderAdmin();
-  if(id==='tabNewTenant')populateDeptSelect();
-  if(id==='tabUsers')closeUserForm();
+  if(['tabTenants','tabDepts','tabSummary','tabUsers'].includes(id)){
+    showLoading('Actualizando datos...');
+    try{ await loadAllData(); renderAdmin(); }catch(e){console.error(e);}
+    hideLoading();
+  }
+  if(id==='tabNewTenant') populateDeptSelect('nt_dept');
+  if(id==='tabUsers') closeUserForm();
 }
 
-/* ── RENDER ADMIN ── */
-function renderAdmin(){
-  const allPaid=db.tenants.flatMap(t=>Object.values(t.payments).filter(v=>v==='paid'));
-  const allOv=db.tenants.flatMap(t=>Object.values(t.payments).filter(v=>v==='overdue'));
-  const totalRec=db.tenants.reduce((s,t)=>s+Object.values(t.payments).filter(v=>v==='paid').length*t.rent,0);
+/* ═══════════════════════════════════════════════
+   RENDER ADMIN
+═══════════════════════════════════════════════ */
+async function renderAdmin(){
+  const depts=cache.depts, tenants=cache.tenants, pagos=cache.pagos;
+
+  // Stats
+  const allPaid=pagos.filter(p=>p.estado==='paid');
+  const allOv=pagos.filter(p=>p.estado==='overdue');
+  const totalRec=allPaid.reduce((s,p)=>s+p.monto,0);
   const se=document.getElementById('adminStats');
   if(se)se.innerHTML=`
     <div class="stat-card"><div class="stat-lbl">Total recaudado</div><div class="stat-val green">$${(totalRec/1000000).toFixed(1)}M</div></div>
     <div class="stat-card"><div class="stat-lbl">Cuotas pagadas</div><div class="stat-val blue">${allPaid.length}</div></div>
     <div class="stat-card"><div class="stat-lbl">En mora</div><div class="stat-val amber">${allOv.length}</div></div>
-    <div class="stat-card"><div class="stat-lbl">Arrendatarios</div><div class="stat-val">${db.tenants.length}</div></div>
-    <div class="stat-card"><div class="stat-lbl">Departamentos</div><div class="stat-val">${db.depts.length}</div></div>`;
+    <div class="stat-card"><div class="stat-lbl">Arrendatarios</div><div class="stat-val">${tenants.length}</div></div>
+    <div class="stat-card"><div class="stat-lbl">Departamentos</div><div class="stat-val">${depts.length}</div></div>`;
 
+  // Tenants table
   const sL={paid:'Al día',pending:'Pendiente',overdue:'Mora'};
   const sC={paid:'pill-paid',pending:'pill-pending',overdue:'pill-overdue'};
   let rows='';
-  db.tenants.forEach(t=>{
-    const ov=Object.entries(t.payments).filter(([,v])=>v==='overdue');
-    const pe=Object.entries(t.payments).filter(([,v])=>v==='pending');
-    const next=ov.length>0?ov[0]:(pe.length>0?pe[0]:null);
-    const st=ov.length>0?'overdue':(pe.length>0?'pending':'paid');
-    const amt=next?'$'+(t.rent+(st==='overdue'?Math.round(t.rent*.03):0)).toLocaleString('es-CL'):'—';
-    const dept=db.depts.find(d=>d.id===t.deptId);
-    const vc=t.vouchers?Object.keys(t.vouchers).length:0;
-    rows+=`<tr><td style="font-weight:600">${t.name}</td><td>${t.rut}</td><td>${t.phone||'—'}</td><td>${dept?dept.name:'—'}</td><td>Día ${t.due}</td><td><span class="pill ${sC[st]}">${sL[st]}</span></td><td style="text-align:right;font-weight:600">${amt}</td><td style="text-align:center">${vc>0?`<span class="comprobante-badge"><i class="ti ti-paperclip"></i>${vc}</span>`:'—'}</td><td style="text-align:center;white-space:nowrap"><button class="btn-ghost btn-sm" onclick="openEditTenant('${t.id}')" title="Editar"><i class="ti ti-pencil"></i></button> <button class="btn-ghost btn-sm danger" onclick="confirmDeleteTenant('${t.id}')" title="Eliminar"><i class="ti ti-trash"></i></button></td></tr>`;
+  tenants.forEach(t=>{
+    const dept=depts.find(d=>d.id===t.depto_id);
+    const tPagos=pagos.filter(p=>p.arrendatario_id===t.id);
+    const ovPagos=tPagos.filter(p=>p.estado==='overdue');
+    const pePagos=tPagos.filter(p=>p.estado==='pending');
+    const st=ovPagos.length>0?'overdue':(pePagos.length>0?'pending':'paid');
+    const nextP=ovPagos[0]||pePagos[0];
+    const amt=nextP?'$'+(nextP.monto+(nextP.multa||0)).toLocaleString('es-CL'):'—';
+    const vc=tPagos.filter(p=>p.comprobante_url).length;
+    rows+=`<tr>
+      <td style="font-weight:600">${t.nombre}</td>
+      <td>${t.rut}</td>
+      <td>${t.telefono||'—'}</td>
+      <td>${dept?dept.nombre:'—'}</td>
+      <td>Día ${t.dia_vencimiento}</td>
+      <td><span class="pill ${sC[st]}">${sL[st]}</span></td>
+      <td style="text-align:right;font-weight:600">${amt}</td>
+      <td style="text-align:center">${vc>0?`<span class="comprobante-badge"><i class="ti ti-paperclip"></i>${vc}</span>`:'—'}</td>
+      <td style="text-align:center;white-space:nowrap">
+        <button class="btn-ghost btn-sm" onclick="openEditTenant('${t.id}')" title="Editar"><i class="ti ti-pencil"></i></button>
+        <button class="btn-ghost btn-sm danger" onclick="confirmDeleteTenant('${t.id}')" title="Eliminar"><i class="ti ti-trash"></i></button>
+      </td></tr>`;
   });
-  const tb=document.getElementById('tenantsBody');if(tb)tb.innerHTML=rows;
+  const tb=document.getElementById('tenantsBody');if(tb)tb.innerHTML=rows||'<tr><td colspan="9" style="text-align:center;color:var(--text2);padding:1.5rem">No hay arrendatarios registrados</td></tr>';
 
+  // Depts table
   let dr='';
-  db.depts.forEach(d=>{
-    const ten=db.tenants.find(t=>t.deptId===d.id);
-    dr+=`<tr><td style="font-weight:600">${d.name}</td><td style="font-size:11px">${d.address}</td><td>${d.rolDpto||'—'}</td><td>${d.rolBodega||'—'}</td><td>${d.rolEstac||'—'}</td><td>$${(d.gc||0).toLocaleString('es-CL')}</td><td>${ten?ten.name.split(' ')[0]:'<span class="pill pill-vacant">Vacante</span>'}</td><td><span class="pill ${ten?'pill-paid':'pill-vacant'}">${ten?'Ocupado':'Vacante'}</span></td><td style="text-align:center;white-space:nowrap"><button class="btn-ghost btn-sm" onclick="openEditDept('${d.id}')" title="Editar"><i class="ti ti-pencil"></i></button> <button class="btn-ghost btn-sm danger" onclick="confirmDeleteDept('${d.id}')" title="Eliminar"><i class="ti ti-trash"></i></button></td></tr>`;
+  depts.forEach(d=>{
+    const ten=tenants.find(t=>t.depto_id===d.id);
+    dr+=`<tr>
+      <td style="font-weight:600">${d.nombre}</td>
+      <td style="font-size:11px">${d.direccion}</td>
+      <td>${d.rol_dpto||'—'}</td>
+      <td>${d.rol_bodega||'—'}</td>
+      <td>${d.rol_estac||'—'}</td>
+      <td>$${(d.gastos_comunes||0).toLocaleString('es-CL')}</td>
+      <td>${ten?ten.nombre.split(' ')[0]:'<span class="pill pill-vacant">Vacante</span>'}</td>
+      <td><span class="pill ${ten?'pill-paid':'pill-vacant'}">${ten?'Ocupado':'Vacante'}</span></td>
+      <td style="text-align:center;white-space:nowrap">
+        <button class="btn-ghost btn-sm" onclick="openEditDept('${d.id}')" title="Editar"><i class="ti ti-pencil"></i></button>
+        <button class="btn-ghost btn-sm danger" onclick="confirmDeleteDept('${d.id}')" title="Eliminar"><i class="ti ti-trash"></i></button>
+      </td></tr>`;
   });
-  const db2=document.getElementById('deptsBody');if(db2)db2.innerHTML=dr;
+  const db2=document.getElementById('deptsBody');if(db2)db2.innerHTML=dr||'<tr><td colspan="9" style="text-align:center;color:var(--text2);padding:1.5rem">No hay departamentos registrados</td></tr>';
 
+  // Summary
   let sh='';
-  db.depts.forEach(d=>{
-    const ten=db.tenants.find(t=>t.deptId===d.id);
-    if(!ten){sh+=`<div class="sum-card"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:13px;font-weight:600">${d.name}</div><div style="font-size:11px;color:var(--text2)">${d.address}</div></div><span class="pill pill-vacant">Vacante</span></div></div>`;return;}
-    const paid=Object.values(ten.payments).filter(v=>v==='paid').length;
-    const total=Object.values(ten.payments).filter(v=>v!==null).length;
-    const pct=total>0?Math.round(paid/total*100):0;
-    const rec=paid*ten.rent;
-    const ov=Object.values(ten.payments).filter(v=>v==='overdue').length;
-    const vc=ten.vouchers?Object.keys(ten.vouchers).length:0;
+  depts.forEach(d=>{
+    const ten=tenants.find(t=>t.depto_id===d.id);
+    if(!ten){sh+=`<div class="sum-card"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:13px;font-weight:600">${d.nombre}</div><div style="font-size:11px;color:var(--text2)">${d.direccion}</div></div><span class="pill pill-vacant">Vacante</span></div></div>`;return;}
+    const tPagos=pagos.filter(p=>p.arrendatario_id===ten.id);
+    const paid=tPagos.filter(p=>p.estado==='paid');
+    const total=tPagos.length;
+    const pct=total>0?Math.round(paid.length/total*100):0;
+    const rec=paid.reduce((s,p)=>s+p.monto,0);
+    const ov=tPagos.filter(p=>p.estado==='overdue').length;
+    const vc=tPagos.filter(p=>p.comprobante_url).length;
     sh+=`<div class="sum-card">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
-        <div><div style="font-size:13px;font-weight:600">${d.name}</div><div style="font-size:11px;color:var(--text2)"><i class="ti ti-user" style="font-size:11px"></i> ${ten.name} · Rol: ${d.rolDpto} · G.Com (arrendador): $${d.gc.toLocaleString('es-CL')}</div></div>
-        <div style="text-align:right;flex-shrink:0;margin-left:12px"><div style="font-size:16px;font-weight:700;color:var(--brand-dark)">$${rec.toLocaleString('es-CL')}</div><div style="font-size:11px;color:var(--text2)">recaudado${vc>0?` · <span style="color:#1D4ED8">${vc} comprobante${vc>1?'s':''}</span>`:''}</div></div>
+        <div><div style="font-size:13px;font-weight:600">${d.nombre}</div>
+        <div style="font-size:11px;color:var(--text2)"><i class="ti ti-user" style="font-size:11px"></i> ${ten.nombre} · ${d.rol_dpto||'Sin rol'} · G.Com (arrendador): $${(d.gastos_comunes||0).toLocaleString('es-CL')}</div></div>
+        <div style="text-align:right;flex-shrink:0;margin-left:12px">
+          <div style="font-size:16px;font-weight:700;color:var(--brand-dark)">$${rec.toLocaleString('es-CL')}</div>
+          <div style="font-size:11px;color:var(--text2)">recaudado${vc>0?` · <span style="color:#1D4ED8">${vc} comprobante${vc>1?'s':''}</span>`:''}</div>
+        </div>
       </div>
       <div class="progress-bg"><div class="progress-fill" style="width:${pct}%"></div></div>
-      <div class="progress-labels"><span>${paid}/${total} cuotas · arriendo $${ten.rent.toLocaleString('es-CL')}</span><span>${pct}%${ov>0?` · <span style="color:#991B1B">${ov} mora</span>`:''}</span></div>
+      <div class="progress-labels"><span>${paid.length}/${total} cuotas · arriendo $${ten.monto_arriendo.toLocaleString('es-CL')}</span><span>${pct}%${ov>0?` · <span style="color:#991B1B">${ov} mora</span>`:''}</span></div>
     </div>`;
   });
-  const sw=document.getElementById('summaryWrap');if(sw)sw.innerHTML=sh;
-  renderUsersTable();
+  const sw=document.getElementById('summaryWrap');if(sw)sw.innerHTML=sh||'<p style="color:var(--text2);font-size:13px">Sin departamentos registrados.</p>';
+
+  // Users
+  await renderUsersTable();
 }
 
-/* ── USERS ── */
-function renderUsersTable(){
+/* ═══════════════════════════════════════════════
+   TENANT LOGIN
+═══════════════════════════════════════════════ */
+async function doLogin(){
+  const rut=document.getElementById('rutInput').value.trim();
+  if(!rut){return;}
+  showLoading('Buscando arrendatario...');
+  try {
+    const res = await sbGet('arrendatarios', `rut=eq.${encodeURIComponent(rut)}&select=*`);
+    hideLoading();
+    const err=document.getElementById('loginError');
+    if(!res||res.length===0){err.className='alert alert-err show';return;}
+    err.className='alert alert-err';
+    currentTenant=res[0];
+    // load dept and pagos for this tenant
+    const [depts, pagos] = await Promise.all([
+      sbGet('departamentos', `id=eq.${currentTenant.depto_id}&select=*`),
+      sbGet('pagos', `arrendatario_id=eq.${currentTenant.id}&order=anio,mes`)
+    ]);
+    currentTenant._dept = depts[0]||null;
+    currentTenant._pagos = pagos;
+    await showTenant();
+  } catch(e) {
+    hideLoading();
+    console.error(e);
+  }
+}
+function doLogout(){currentTenant=null;document.getElementById('rutInput').value='';showScreen('screenLogin');}
+
+async function showTenant(){
+  const t=currentTenant;
+  const dept=t._dept;
+  document.getElementById('tenantName').textContent='Bienvenida/o, '+t.nombre;
+  document.getElementById('tenantSub').textContent=t.rut+' · '+(dept?dept.nombre:'Sin departamento');
+  renderDeptCard(t,dept);
+  showScreen('screenTenant');
+}
+
+/* ═══════════════════════════════════════════════
+   TENANT DEPT CARD
+═══════════════════════════════════════════════ */
+function renderDeptCard(t,dept){
+  if(!dept){document.getElementById('deptCardWrap').innerHTML='<p style="color:var(--text2)">No tienes departamento asignado.</p>';return;}
+  const pagos=t._pagos||[];
+  // Build month map: key = "mes-anio"
+  const pagoMap={};
+  pagos.forEach(p=>{ pagoMap[p.mes+'-'+p.anio]=p; });
+
+  // Determine status
+  const ovPagos=pagos.filter(p=>p.estado==='overdue');
+  const pePagos=pagos.filter(p=>p.estado==='pending');
+  const st=ovPagos.length>0?'overdue':(pePagos.length>0?'pending':'paid');
+  const sL={overdue:'Mora',pending:'Pendiente',paid:'Al día'};
+  const sC={overdue:'badge-overdue',pending:'badge-pending',paid:'badge-paid'};
+
+  // Pills: show all pagos months
+  let pills='';
+  if(pagos.length===0){
+    pills='<p style="color:var(--text2);font-size:13px">No tienes cuotas registradas aún.</p>';
+  } else {
+    pagos.forEach(p=>{
+      const cls=p.estado==='paid'?'mpaid':p.estado==='pending'?'mpending':p.estado==='overdue'?'moverdue':'';
+      const icon=p.estado==='paid'?'✓':p.estado==='overdue'?'!':'·';
+      const label=MONTHS[p.mes-1].slice(0,3)+' '+p.anio;
+      pills+=`<div class="mpill ${cls}" onclick="selectPago('${p.id}')" id="pill-${p.id}">
+        <span style="font-size:11px">${label}</span><span class="ms">${icon}</span>
+      </div>`;
+    });
+  }
+
+  const nextPago = ovPagos[0]||pePagos[0]||null;
+  uploadedFile=null;
+
+  document.getElementById('deptCardWrap').innerHTML=`
+  <div class="card">
+    <div class="dept-header">
+      <div class="dept-icon"><i class="ti ti-door"></i></div>
+      <div style="flex:1">
+        <div style="font-size:15px;font-weight:600">${dept.nombre} — ${dept.piso||''}</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px"><i class="ti ti-map-pin" style="font-size:12px"></i> ${dept.direccion}</div>
+      </div>
+      <span class="badge ${sC[st]}">${sL[st]}</span>
+    </div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:8px">Tus cuotas:</div>
+    <div class="months-grid">${pills}</div>
+    <div class="pay-box" id="paySection">
+      ${nextPago?renderPayDetail(t,nextPago):'<div style="text-align:center;padding:8px 0;color:var(--text2);font-size:13px"><i class="ti ti-circle-check" style="font-size:24px;color:#065F46;display:block;margin-bottom:6px"></i>No tienes cuotas pendientes</div>'}
+    </div>
+  </div>`;
+}
+
+function renderPayDetail(t, pago){
+  const total = pago.monto + (pago.multa||0);
+  const mesLabel = MONTHS[pago.mes-1]+' '+pago.anio;
+  const fileHtml=uploadedFile?
+    `<div class="file-pill">
+      <div class="file-ico ${uploadedFile.type==='pdf'?'pdf':'img'}"><i class="ti ti-${uploadedFile.type==='pdf'?'file-type-pdf':'photo'}" style="font-size:16px"></i></div>
+      <div style="flex:1;min-width:0"><div class="file-name">${uploadedFile.name}</div><div class="file-sz">${uploadedFile.size}</div></div>
+      <button class="btn-ghost" onclick="removeFile('${pago.id}')" style="padding:4px 6px"><i class="ti ti-x"></i></button>
+    </div>`:
+    `<div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()"
+      ondragover="event.preventDefault();this.classList.add('drag')"
+      ondragleave="this.classList.remove('drag')"
+      ondrop="handleDrop(event,'${pago.id}')">
+      <input type="file" id="fileInput" accept=".jpg,.jpeg,.pdf" onchange="handleFile(event,'${pago.id}')"/>
+      <i class="ti ti-cloud-upload"></i>
+      <div class="uz-title">Adjunta tu comprobante de pago</div>
+      <div class="uz-sub">Toca aquí o arrastra · JPG o PDF · máx. 5 MB</div>
+    </div>
+    <div class="upload-req" id="uploadRequired"><i class="ti ti-alert-circle"></i> Debes adjuntar el comprobante primero.</div>`;
+  return `
+    <div class="pay-row"><span class="pay-lbl">Arriendo ${mesLabel}</span><span class="pay-val">$${pago.monto.toLocaleString('es-CL')}</span></div>
+    ${pago.multa>0?`<div class="pay-row"><span class="pay-lbl" style="color:var(--danger)">Multa por mora (3%)</span><span class="pay-val" style="color:var(--danger)">$${pago.multa.toLocaleString('es-CL')}</span></div>`:''}
+    <div class="sep"></div>
+    <div class="pay-row"><span class="pay-lbl" style="font-weight:600">Total a pagar</span><span class="pay-total-val">$${total.toLocaleString('es-CL')}</span></div>
+    <div class="pay-row"><span class="pay-lbl">Vence día</span><span class="pay-val">${t.dia_vencimiento} de cada mes</span></div>
+    <div style="margin-top:.85rem">
+      <div style="font-size:12px;font-weight:600;margin-bottom:6px"><i class="ti ti-paperclip" style="vertical-align:-1px"></i> Comprobante de pago</div>
+      ${fileHtml}
+    </div>
+    <div class="pay-btns">
+      <button class="btn btn-outline" onclick="cancelPay()"><i class="ti ti-x"></i> Cancelar</button>
+      <button class="btn btn-brand" onclick="doPay('${pago.id}')"><i class="ti ti-check"></i> Confirmar pago</button>
+    </div>`;
+}
+
+function selectPago(pagoId){
+  const t=currentTenant;
+  const pago=t._pagos.find(p=>p.id===pagoId);
+  if(!pago||pago.estado==='paid')return;
+  uploadedFile=null;
+  document.querySelectorAll('.mpill').forEach(el=>el.classList.remove('selected'));
+  const pill=document.getElementById('pill-'+pagoId);if(pill)pill.classList.add('selected');
+  document.getElementById('paySection').innerHTML=renderPayDetail(t,pago);
+}
+function cancelPay(){uploadedFile=null;renderDeptCard(currentTenant,currentTenant._dept);}
+function handleFile(e,pagoId){const f=e.target.files[0];if(f)processFile(f,pagoId);}
+function handleDrop(e,pagoId){e.preventDefault();document.getElementById('uploadZone')?.classList.remove('drag');const f=e.dataTransfer.files[0];if(f)processFile(f,pagoId);}
+function processFile(file,pagoId){
+  const ext=file.name.split('.').pop().toLowerCase();
+  if(!['jpg','jpeg','pdf'].includes(ext)){alert('Solo se aceptan archivos JPG o PDF.');return;}
+  if(file.size>5*1024*1024){alert('El archivo no puede superar los 5 MB.');return;}
+  const sz=file.size>1024*1024?(file.size/1024/1024).toFixed(1)+' MB':Math.round(file.size/1024)+' KB';
+  uploadedFile={name:file.name,size:sz,type:ext==='pdf'?'pdf':'img',raw:file};
+  const t=currentTenant;
+  const pago=t._pagos.find(p=>p.id===pagoId);
+  document.getElementById('paySection').innerHTML=renderPayDetail(t,pago);
+}
+function removeFile(pagoId){
+  uploadedFile=null;
+  const pago=currentTenant._pagos.find(p=>p.id===pagoId);
+  document.getElementById('paySection').innerHTML=renderPayDetail(currentTenant,pago);
+}
+
+async function doPay(pagoId){
+  if(!uploadedFile){const r=document.getElementById('uploadRequired');if(r)r.style.display='flex';return;}
+  showLoading('Subiendo comprobante...');
+  try {
+    const t=currentTenant;
+    const pago=t._pagos.find(p=>p.id===pagoId);
+    const folio='F'+Date.now().toString().slice(-8);
+    const path=`${t.id}/${pagoId}_${Date.now()}.${uploadedFile.raw.name.split('.').pop()}`;
+
+    showLoading('Guardando pago...');
+    let comprobanteUrl='', comprobanteName=uploadedFile.name;
+    try {
+      comprobanteUrl = await sbUpload(path, uploadedFile.raw);
+    } catch(e) {
+      console.warn('Upload error (storage may need setup):', e);
+      comprobanteUrl = 'pendiente';
+    }
+
+    const now=new Date();
+    await sbPatch('pagos', pagoId, {
+      estado:'paid',
+      fecha_pago: now.toISOString(),
+      folio,
+      comprobante_url: comprobanteUrl,
+      comprobante_nombre: comprobanteName
+    });
+
+    // update local cache
+    pago.estado='paid';
+    pago.fecha_pago=now.toISOString();
+    pago.folio=folio;
+    pago.comprobante_url=comprobanteUrl;
+    pago.comprobante_nombre=comprobanteName;
+
+    const total=pago.monto+(pago.multa||0);
+    document.getElementById('modalReceipt').innerHTML=`
+      <div class="r-row"><span>Arrendatario</span><span>${t.nombre}</span></div>
+      <div class="r-row"><span>Departamento</span><span>${t._dept?.nombre||''}</span></div>
+      <div class="r-row"><span>Período</span><span>${MONTHS[pago.mes-1]} ${pago.anio}</span></div>
+      <div class="r-row"><span>Total pagado</span><span>$${total.toLocaleString('es-CL')}</span></div>
+      <div class="r-row"><span>Fecha</span><span>${now.toLocaleDateString('es-CL')}</span></div>
+      <div class="r-row"><span>Folio</span><span>${folio}</span></div>
+      <div class="r-file"><i class="ti ti-${uploadedFile.type==='pdf'?'file-type-pdf':'photo'}" style="font-size:17px;color:${uploadedFile.type==='pdf'?'#991B1B':'#065F46'}"></i>
+      <span style="font-size:12px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${uploadedFile.name}</span>
+      <span style="font-size:11px;color:var(--text3)">${uploadedFile.size}</span></div>`;
+
+    uploadedFile=null;
+    hideLoading();
+    document.getElementById('modalOverlay').classList.add('visible');
+  } catch(e) {
+    hideLoading();
+    alert('Error al registrar el pago: '+e.message);
+    console.error(e);
+  }
+}
+function closeModal(){document.getElementById('modalOverlay').classList.remove('visible');renderDeptCard(currentTenant,currentTenant._dept);}
+
+/* ═══════════════════════════════════════════════
+   DEPT CRUD
+═══════════════════════════════════════════════ */
+async function saveDept(){
+  const name=document.getElementById('nd_name').value.trim();
+  const address=document.getElementById('nd_addr').value.trim();
+  if(!name||!address){showToast('toastDept','Completa nombre y dirección del departamento',false);return;}
+  showLoading('Guardando departamento...');
+  try {
+    await sbPost('departamentos',{
+      nombre:name, direccion:address,
+      rol_dpto:document.getElementById('nd_rolDpto').value.trim(),
+      rol_bodega:document.getElementById('nd_rolBodega').value.trim(),
+      rol_estac:document.getElementById('nd_rolEstac').value.trim(),
+      gastos_comunes:parseInt(document.getElementById('nd_gc').value)||0,
+      piso:document.getElementById('nd_floor').value.trim()
+    });
+    await loadAllData();
+    showToast('toastDept',`${name} registrado correctamente.`);
+    clearDeptForm();
+  } catch(e){showToast('toastDept','Error: '+e.message,false);}
+  hideLoading();
+}
+function clearDeptForm(){['nd_name','nd_addr','nd_rolDpto','nd_rolBodega','nd_rolEstac','nd_gc','nd_floor'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';}); }
+
+function openEditDept(id){
+  const d=cache.depts.find(x=>x.id===id);if(!d)return;
+  document.getElementById('ed_id').value=d.id;
+  document.getElementById('ed_name').value=d.nombre;
+  document.getElementById('ed_addr').value=d.direccion;
+  document.getElementById('ed_rolDpto').value=d.rol_dpto||'';
+  document.getElementById('ed_rolBodega').value=d.rol_bodega||'';
+  document.getElementById('ed_rolEstac').value=d.rol_estac||'';
+  document.getElementById('ed_gc').value=d.gastos_comunes||'';
+  document.getElementById('ed_floor').value=d.piso||'';
+  document.getElementById('btnTabEditDept').style.display='flex';
+  switchTab(null,'tabEditDept');
+}
+async function updateDept(){
+  const id=document.getElementById('ed_id').value;
+  const name=document.getElementById('ed_name').value.trim();
+  const address=document.getElementById('ed_addr').value.trim();
+  if(!name||!address){showToast('toastEditDept','Nombre y dirección son obligatorios.',false);return;}
+  showLoading('Actualizando departamento...');
+  try {
+    await sbPatch('departamentos',id,{
+      nombre:name, direccion:address,
+      rol_dpto:document.getElementById('ed_rolDpto').value.trim(),
+      rol_bodega:document.getElementById('ed_rolBodega').value.trim(),
+      rol_estac:document.getElementById('ed_rolEstac').value.trim(),
+      gastos_comunes:parseInt(document.getElementById('ed_gc').value)||0,
+      piso:document.getElementById('ed_floor').value.trim()
+    });
+    await loadAllData();
+    document.getElementById('btnTabEditDept').style.display='none';
+    hideLoading();
+    switchTab(null,'tabDepts');
+  } catch(e){hideLoading();showToast('toastEditDept','Error: '+e.message,false);}
+}
+function confirmDeleteDept(id){
+  const d=cache.depts.find(x=>x.id===id);if(!d)return;
+  const hasTenant=cache.tenants.find(t=>t.depto_id===id);
+  if(hasTenant){
+    document.getElementById('confirmTitle').textContent='No se puede eliminar';
+    document.getElementById('confirmMsg').textContent='"'+d.nombre+'" tiene a '+hasTenant.nombre+' asignado. Elimina o reasigna al arrendatario primero.';
+    document.getElementById('confirmOkBtn').textContent='Entendido';
+    document.getElementById('confirmOkBtn').onclick=closeConfirm;
+    document.getElementById('confirmOverlay').classList.add('visible');return;
+  }
+  document.getElementById('confirmTitle').textContent='Eliminar departamento';
+  document.getElementById('confirmMsg').textContent='¿Eliminar "'+d.nombre+'"? Esta acción no se puede deshacer.';
+  document.getElementById('confirmOkBtn').textContent='Eliminar';
+  document.getElementById('confirmOkBtn').onclick=async()=>{
+    showLoading('Eliminando...');closeConfirm();
+    try{await sbDelete('departamentos',id);await loadAllData();renderAdmin();}catch(e){alert('Error: '+e.message);}
+    hideLoading();
+  };
+  document.getElementById('confirmOverlay').classList.add('visible');
+}
+
+/* ═══════════════════════════════════════════════
+   TENANT CRUD
+═══════════════════════════════════════════════ */
+function populateDeptSelect(selId, excludeId=''){
+  const sel=document.getElementById(selId);if(!sel)return;
+  const occ=new Set(cache.tenants.filter(t=>t.id!==excludeId).map(t=>t.depto_id));
+  sel.innerHTML='<option value="">— Seleccionar —</option>';
+  cache.depts.forEach(d=>{
+    const o=document.createElement('option');
+    o.value=d.id; o.textContent=d.nombre+(occ.has(d.id)?' (ocupado)':'');
+    if(occ.has(d.id))o.style.color='var(--text3)';
+    sel.appendChild(o);
+  });
+}
+async function saveTenant(){
+  const name=document.getElementById('nt_name').value.trim();
+  const rut=document.getElementById('nt_rut').value.trim();
+  const deptId=document.getElementById('nt_dept').value;
+  const rent=parseInt(document.getElementById('nt_rent').value)||0;
+  const due=parseInt(document.getElementById('nt_due').value)||5;
+  if(!name||!rut||!deptId||!rent){showToast('toastTenant','Completa los campos obligatorios (*)',false);return;}
+  showLoading('Guardando arrendatario...');
+  try {
+    const res=await sbPost('arrendatarios',{
+      nombre:name, rut,
+      telefono:document.getElementById('nt_phone').value.trim(),
+      email:document.getElementById('nt_email').value.trim(),
+      depto_id:deptId, monto_arriendo:rent, dia_vencimiento:due,
+      fecha_inicio:document.getElementById('nt_start').value||null
+    });
+    // Create pending pago for current month
+    const newT=res[0];
+    if(newT){
+      const now=new Date();
+      await sbPost('pagos',{
+        arrendatario_id:newT.id,
+        mes:now.getMonth()+1, anio:now.getFullYear(),
+        estado:'pending', monto:rent, multa:0
+      });
+    }
+    await loadAllData();
+    showToast('toastTenant',`${name} registrado/a correctamente.`);
+    clearTenantForm();
+  } catch(e){showToast('toastTenant','Error: '+e.message,false);}
+  hideLoading();
+}
+function clearTenantForm(){['nt_name','nt_rut','nt_phone','nt_email','nt_rent','nt_due','nt_start'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});const s=document.getElementById('nt_dept');if(s)s.value='';}
+
+function openEditTenant(id){
+  const t=cache.tenants.find(x=>x.id===id);if(!t)return;
+  document.getElementById('et_id').value=t.id;
+  document.getElementById('et_name').value=t.nombre;
+  document.getElementById('et_rut').value=t.rut;
+  document.getElementById('et_phone').value=t.telefono||'';
+  document.getElementById('et_email').value=t.email||'';
+  document.getElementById('et_rent').value=t.monto_arriendo;
+  document.getElementById('et_due').value=t.dia_vencimiento;
+  document.getElementById('et_start').value=t.fecha_inicio||'';
+  populateDeptSelect('et_dept', t.id);
+  document.getElementById('et_dept').value=t.depto_id;
+  document.getElementById('btnTabEditTenant').style.display='flex';
+  switchTab(null,'tabEditTenant');
+}
+async function updateTenant(){
+  const id=document.getElementById('et_id').value;
+  const name=document.getElementById('et_name').value.trim();
+  const rut=document.getElementById('et_rut').value.trim();
+  const deptId=document.getElementById('et_dept').value;
+  const rent=parseInt(document.getElementById('et_rent').value)||0;
+  const due=parseInt(document.getElementById('et_due').value)||5;
+  if(!name||!rut||!deptId||!rent){showToast('toastEditTenant','Completa los campos obligatorios (*)',false);return;}
+  showLoading('Actualizando arrendatario...');
+  try {
+    await sbPatch('arrendatarios',id,{
+      nombre:name, rut,
+      telefono:document.getElementById('et_phone').value.trim(),
+      email:document.getElementById('et_email').value.trim(),
+      depto_id:deptId, monto_arriendo:rent, dia_vencimiento:due,
+      fecha_inicio:document.getElementById('et_start').value||null
+    });
+    await loadAllData();
+    document.getElementById('btnTabEditTenant').style.display='none';
+    hideLoading();
+    switchTab(null,'tabTenants');
+  } catch(e){hideLoading();showToast('toastEditTenant','Error: '+e.message,false);}
+}
+function confirmDeleteTenant(id){
+  const t=cache.tenants.find(x=>x.id===id);if(!t)return;
+  document.getElementById('confirmTitle').textContent='Eliminar arrendatario';
+  document.getElementById('confirmMsg').textContent='¿Eliminar a "'+t.nombre+'"? Se borrarán todos sus pagos. Esta acción no se puede deshacer.';
+  document.getElementById('confirmOkBtn').textContent='Eliminar';
+  document.getElementById('confirmOkBtn').onclick=async()=>{
+    showLoading('Eliminando...');closeConfirm();
+    try{await sbDelete('arrendatarios',id);await loadAllData();renderAdmin();}catch(e){alert('Error: '+e.message);}
+    hideLoading();
+  };
+  document.getElementById('confirmOverlay').classList.add('visible');
+}
+
+/* ═══════════════════════════════════════════════
+   USERS CRUD
+═══════════════════════════════════════════════ */
+async function renderUsersTable(){
   const tbody=document.getElementById('usersBody');if(!tbody)return;
+  let users=[];
+  try{ users=await sbGet('admin_usuarios','order=created_at'); }catch(e){console.error(e);}
+  cache.users=users;
   const isSelf=currentAdminUser?.id;
   let rows='';
-  db.adminUsers.forEach(u=>{
+  users.forEach(u=>{
     const isCur=u.id===isSelf;
+    const acc=u.ultimo_acceso?new Date(u.ultimo_acceso).toLocaleDateString('es-CL'):'—';
     rows+=`<tr>
-      <td><div class="u-avatar" style="background:${avatarColor(u.name)}">${initials(u.name)}</div></td>
-      <td style="font-weight:600">${u.name}${isCur?' <span style="font-size:10px;color:var(--text3)">(tú)</span>':''}</td>
+      <td><div class="u-avatar" style="background:${avatarColor(u.nombre)}">${initials(u.nombre)}</div></td>
+      <td style="font-weight:600">${u.nombre}${isCur?' <span style="font-size:10px;color:var(--text3)">(tú)</span>':''}</td>
       <td>${u.username}</td>
-      <td><span class="pill ${u.role==='admin'?'pill-admin':'pill-viewer'}">${u.role==='admin'?'Administrador':'Solo lectura'}</span></td>
-      <td style="color:var(--text2)">${u.lastAccess||'—'}</td>
+      <td><span class="pill ${u.rol==='admin'?'pill-admin':'pill-viewer'}">${u.rol==='admin'?'Administrador':'Solo lectura'}</span></td>
+      <td style="color:var(--text2)">${acc}</td>
       <td style="text-align:center">
         <button class="btn-ghost btn-sm" onclick="openUserForm('${u.id}')" title="Editar"><i class="ti ti-pencil"></i></button>
         ${isCur?'':` <button class="btn-ghost btn-sm danger" onclick="confirmDeleteUser('${u.id}')" title="Eliminar"><i class="ti ti-trash"></i></button>`}
       </td></tr>`;
   });
-  tbody.innerHTML=rows;
+  tbody.innerHTML=rows||'<tr><td colspan="6" style="text-align:center;color:var(--text2);padding:1.5rem">Sin usuarios</td></tr>';
 }
 function openUserForm(uid){
   editingUserId=uid||null;
@@ -689,12 +1226,12 @@ function openUserForm(uid){
   document.getElementById('u_passLabel').textContent=isEdit?'Nueva contraseña':'Contraseña *';
   document.getElementById('u_pass2Label').textContent=isEdit?'Confirmar nueva contraseña':'Confirmar contraseña *';
   if(isEdit){
-    const u=db.adminUsers.find(x=>x.id===uid);if(!u)return;
+    const u=cache.users.find(x=>x.id===uid);if(!u)return;
     document.getElementById('u_id').value=u.id;
-    document.getElementById('u_name').value=u.name;
+    document.getElementById('u_name').value=u.nombre;
     document.getElementById('u_username').value=u.username;
     document.getElementById('u_email').value=u.email||'';
-    document.getElementById('u_role').value=u.role;
+    document.getElementById('u_role').value=u.rol;
     document.getElementById('u_pass').value='';
     document.getElementById('u_pass2').value='';
   } else {
@@ -705,297 +1242,53 @@ function openUserForm(uid){
   setTimeout(()=>document.getElementById('userFormWrap').scrollIntoView({behavior:'smooth',block:'start'}),100);
 }
 function closeUserForm(){editingUserId=null;document.getElementById('userFormWrap').style.display='none';}
-function saveUser(){
-  const name=document.getElementById('u_name').value.trim(),username=document.getElementById('u_username').value.trim();
-  const email=document.getElementById('u_email').value.trim(),role=document.getElementById('u_role').value;
-  const pass=document.getElementById('u_pass').value,pass2=document.getElementById('u_pass2').value;
+async function saveUser(){
+  const name=document.getElementById('u_name').value.trim();
+  const username=document.getElementById('u_username').value.trim();
+  const email=document.getElementById('u_email').value.trim();
+  const role=document.getElementById('u_role').value;
+  const pass=document.getElementById('u_pass').value;
+  const pass2=document.getElementById('u_pass2').value;
   const isEdit=!!editingUserId;
   if(!name||!username){showToast('toastUser','Nombre y usuario son obligatorios.',false);return;}
   if(!isEdit&&!pass){showToast('toastUser','La contraseña es obligatoria para nuevos usuarios.',false);return;}
   if(pass&&pass.length<6){showToast('toastUser','La contraseña debe tener al menos 6 caracteres.',false);return;}
   if(pass&&pass!==pass2){showToast('toastUser','Las contraseñas no coinciden.',false);return;}
-  if(db.adminUsers.find(u=>u.username===username&&u.id!==editingUserId)){showToast('toastUser','Ese nombre de usuario ya está en uso.',false);return;}
-  if(isEdit){
-    const u=db.adminUsers.find(x=>x.id===editingUserId);
-    u.name=name;u.username=username;u.email=email;u.role=role;if(pass)u.password=pass;
-    if(u.id===currentAdminUser?.id){currentAdminUser=u;document.getElementById('adminChipName').textContent=u.name.split(' ')[0];}
-    showToast('toastUser',`${name} actualizado correctamente.`);
-  } else {
-    db.adminUsers.push({id:'u'+Date.now(),name,username,password:pass,role,email,lastAccess:'—'});
-    showToast('toastUser',`${name} creado correctamente.`);
-  }
-  closeUserForm();renderUsersTable();
+  showLoading('Guardando usuario...');
+  try {
+    if(isEdit){
+      const body={nombre:name,username,email,rol:role};
+      if(pass)body.password_hash=pass;
+      await sbPatch('admin_usuarios',editingUserId,body);
+      if(editingUserId===currentAdminUser?.id){
+        currentAdminUser.nombre=name;
+        document.getElementById('adminChipName').textContent=name.split(' ')[0];
+      }
+      showToast('toastUser',`${name} actualizado correctamente.`);
+    } else {
+      await sbPost('admin_usuarios',{nombre:name,username,email,rol:role,password_hash:pass});
+      showToast('toastUser',`${name} creado correctamente.`);
+    }
+    closeUserForm();
+    await renderUsersTable();
+  } catch(e){showToast('toastUser','Error: '+e.message,false);}
+  hideLoading();
 }
 function confirmDeleteUser(uid){
-  const u=db.adminUsers.find(x=>x.id===uid);if(!u)return;
+  const u=cache.users.find(x=>x.id===uid);if(!u)return;
   document.getElementById('confirmTitle').textContent='Eliminar usuario';
-  document.getElementById('confirmMsg').textContent=`¿Eliminar a "${u.name}"? Esta acción no se puede deshacer.`;
-  document.getElementById('confirmOkBtn').onclick=()=>{
-    db.adminUsers=db.adminUsers.filter(x=>x.id!==uid);
-    closeConfirm();showToast('toastUser','Usuario eliminado.');renderUsersTable();
-  };
-  document.getElementById('confirmOverlay').classList.add('visible');
-}
-function closeConfirm(){document.getElementById('confirmOverlay').classList.remove('visible');}
-
-/* ── TENANT FLOW ── */
-function doLogin(){
-  const rut=document.getElementById('rutInput').value.trim();
-  const t=db.tenants.find(x=>x.rut.toLowerCase()===rut.toLowerCase());
-  const err=document.getElementById('loginError');
-  if(!t){err.className='alert alert-err show';return;}
-  err.className='alert alert-err';currentTenant=t;showTenant();
-}
-function doLogout(){currentTenant=null;document.getElementById('rutInput').value='';showScreen('screenLogin');}
-function showTenant(){
-  const t=currentTenant,dept=db.depts.find(d=>d.id===t.deptId);
-  document.getElementById('tenantName').textContent='Bienvenida/o, '+t.name;
-  document.getElementById('tenantSub').textContent=t.rut+' · '+(dept?dept.name:'Sin departamento');
-  renderDeptCard(t,dept);showScreen('screenTenant');
-}
-function renderDeptCard(t,dept){
-  if(!dept){document.getElementById('deptCardWrap').innerHTML='<p style="color:var(--text2)">No tienes departamento asignado.</p>';return;}
-  const ov=Object.entries(t.payments).filter(([,v])=>v==='overdue').map(([k])=>parseInt(k));
-  const pe=Object.entries(t.payments).filter(([,v])=>v==='pending').map(([k])=>parseInt(k));
-  const next=ov.length>0?ov[0]:(pe.length>0?pe[0]:null);
-  const st=ov.length>0?'overdue':(pe.length>0?'pending':'paid');
-  const sL={overdue:'Mora',pending:'Pendiente',paid:'Al día'};
-  const sC={overdue:'badge-overdue',pending:'badge-pending',paid:'badge-paid'};
-  let pills='';
-  for(let i=0;i<12;i++){
-    const pmt=t.payments[i];
-    if(pmt===null){pills+=`<div class="mpill mlocked"><span>${MONTHS[i].slice(0,3)}</span><span class="ms">—</span></div>`;continue;}
-    const cls=pmt==='paid'?'mpaid':pmt==='pending'?'mpending':pmt==='overdue'?'moverdue':'';
-    const icon=pmt==='paid'?'✓':pmt==='overdue'?'!':'·';
-    pills+=`<div class="mpill ${cls}" onclick="selectMonth(${i})" id="pill-${i}"><span>${MONTHS[i].slice(0,3)}</span><span class="ms">${icon}</span></div>`;
-  }
-  uploadedFile=null;
-  document.getElementById('deptCardWrap').innerHTML=`
-  <div class="card">
-    <div class="dept-header">
-      <div class="dept-icon"><i class="ti ti-door"></i></div>
-      <div style="flex:1">
-        <div style="font-size:15px;font-weight:600">${dept.name} — ${dept.floor}</div>
-        <div style="font-size:12px;color:var(--text2);margin-top:2px"><i class="ti ti-map-pin" style="font-size:12px"></i> ${dept.address}</div>
-      </div>
-      <span class="badge ${sC[st]}">${sL[st]}</span>
-    </div>
-    <div style="font-size:12px;color:var(--text2);margin-bottom:8px">Selecciona el mes a pagar:</div>
-    <div class="months-grid">${pills}</div>
-    <div class="pay-box" id="paySection">
-      ${next!==null?renderPayDetail(t,next):'<div style="text-align:center;padding:8px 0;color:var(--text2);font-size:13px"><i class="ti ti-circle-check" style="font-size:24px;color:#065F46;display:block;margin-bottom:6px"></i>No tienes cuotas pendientes</div>'}
-    </div>
-  </div>`;
-}
-function renderPayDetail(t,month){
-  const isOv=t.payments[month]==='overdue';
-  const multa=isOv?Math.round(t.rent*.03):0;
-  const total=t.rent+multa;
-  const fileHtml=uploadedFile?
-    `<div class="file-pill">
-      <div class="file-ico ${uploadedFile.type==='pdf'?'pdf':'img'}"><i class="ti ti-${uploadedFile.type==='pdf'?'file-type-pdf':'photo'}" style="font-size:16px"></i></div>
-      <div style="flex:1;min-width:0"><div class="file-name">${uploadedFile.name}</div><div class="file-sz">${uploadedFile.size}</div></div>
-      <button class="btn-ghost" onclick="removeFile(${month})" style="padding:4px 6px"><i class="ti ti-x"></i></button>
-    </div>`:
-    `<div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="handleDrop(event,${month})">
-      <input type="file" id="fileInput" accept=".jpg,.jpeg,.pdf" onchange="handleFile(event,${month})"/>
-      <i class="ti ti-cloud-upload"></i>
-      <div class="uz-title">Adjunta tu comprobante de pago</div>
-      <div class="uz-sub">Toca aquí o arrastra · JPG o PDF · máx. 5 MB</div>
-    </div>
-    <div class="upload-req" id="uploadRequired"><i class="ti ti-alert-circle"></i> Debes adjuntar el comprobante primero.</div>`;
-  return `
-    <div class="pay-row"><span class="pay-lbl">Arriendo ${MONTHS[month]} ${new Date().getFullYear()}</span><span class="pay-val">$${t.rent.toLocaleString('es-CL')}</span></div>
-    ${isOv?`<div class="pay-row"><span class="pay-lbl" style="color:var(--danger)">Multa por mora (3%)</span><span class="pay-val" style="color:var(--danger)">$${multa.toLocaleString('es-CL')}</span></div>`:''}
-    <div class="sep"></div>
-    <div class="pay-row"><span class="pay-lbl" style="font-weight:600">Total a pagar</span><span class="pay-total-val">$${total.toLocaleString('es-CL')}</span></div>
-    <div class="pay-row"><span class="pay-lbl">Vence día</span><span class="pay-val">${t.due} de cada mes</span></div>
-    <div style="margin-top:.85rem">
-      <div style="font-size:12px;font-weight:600;margin-bottom:6px"><i class="ti ti-paperclip" style="vertical-align:-1px"></i> Comprobante de pago</div>
-      ${fileHtml}
-    </div>
-    <div class="pay-btns">
-      <button class="btn btn-outline" onclick="cancelPay()"><i class="ti ti-x"></i> Cancelar</button>
-      <button class="btn btn-brand" onclick="doPay(${month})"><i class="ti ti-check"></i> Confirmar pago</button>
-    </div>`;
-}
-function selectMonth(i){
-  const t=currentTenant;
-  if(!t.payments[i]||t.payments[i]==='paid')return;
-  uploadedFile=null;
-  document.querySelectorAll('.mpill').forEach(el=>el.classList.remove('selected'));
-  const pill=document.getElementById('pill-'+i);if(pill)pill.classList.add('selected');
-  document.getElementById('paySection').innerHTML=renderPayDetail(t,i);
-}
-function cancelPay(){uploadedFile=null;const t=currentTenant,dept=db.depts.find(d=>d.id===t.deptId);renderDeptCard(t,dept);}
-function handleFile(e,month){const f=e.target.files[0];if(f)processFile(f,month);}
-function handleDrop(e,month){e.preventDefault();document.getElementById('uploadZone')?.classList.remove('drag');const f=e.dataTransfer.files[0];if(f)processFile(f,month);}
-function processFile(file,month){
-  const ext=file.name.split('.').pop().toLowerCase();
-  if(!['jpg','jpeg','pdf'].includes(ext)){alert('Solo se aceptan archivos JPG o PDF.');return;}
-  if(file.size>5*1024*1024){alert('El archivo no puede superar los 5 MB.');return;}
-  const sz=file.size>1024*1024?(file.size/1024/1024).toFixed(1)+' MB':Math.round(file.size/1024)+' KB';
-  uploadedFile={name:file.name,size:sz,type:ext==='pdf'?'pdf':'img'};
-  document.getElementById('paySection').innerHTML=renderPayDetail(currentTenant,month);
-}
-function removeFile(month){uploadedFile=null;document.getElementById('paySection').innerHTML=renderPayDetail(currentTenant,month);}
-function doPay(month){
-  if(!uploadedFile){const r=document.getElementById('uploadRequired');if(r)r.style.display='flex';return;}
-  const t=currentTenant,dept=db.depts.find(d=>d.id===t.deptId);
-  const isOv=t.payments[month]==='overdue';
-  const multa=isOv?Math.round(t.rent*.03):0;
-  const total=t.rent+multa;
-  const now=new Date(),folio='F'+Date.now().toString().slice(-8);
-  if(!t.vouchers)t.vouchers={};
-  t.vouchers[month]={file:uploadedFile.name,date:now.toLocaleDateString('es-CL'),folio};
-  document.getElementById('modalReceipt').innerHTML=`
-    <div class="r-row"><span>Arrendatario</span><span>${t.name}</span></div>
-    <div class="r-row"><span>Departamento</span><span>${dept.name}</span></div>
-    <div class="r-row"><span>Período</span><span>${MONTHS[month]} ${now.getFullYear()}</span></div>
-    <div class="r-row"><span>Total pagado</span><span>$${total.toLocaleString('es-CL')}</span></div>
-    <div class="r-row"><span>Fecha</span><span>${now.toLocaleDateString('es-CL')}</span></div>
-    <div class="r-row"><span>Folio</span><span>${folio}</span></div>
-    <div class="r-file"><i class="ti ti-${uploadedFile.type==='pdf'?'file-type-pdf':'photo'}" style="font-size:17px;color:${uploadedFile.type==='pdf'?'#991B1B':'#065F46'}"></i>
-    <span style="font-size:12px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${uploadedFile.name}</span>
-    <span style="font-size:11px;color:var(--text3)">${uploadedFile.size}</span></div>`;
-  t.payments[month]='paid';uploadedFile=null;
-  document.getElementById('modalOverlay').classList.add('visible');
-}
-function closeModal(){document.getElementById('modalOverlay').classList.remove('visible');renderDeptCard(currentTenant,db.depts.find(d=>d.id===currentTenant.deptId));}
-
-/* ── FORMS ── */
-function populateDeptSelect(){
-  const sel=document.getElementById('nt_dept');if(!sel)return;
-  const occ=new Set(db.tenants.map(t=>t.deptId));
-  sel.innerHTML='<option value="">— Seleccionar —</option>';
-  db.depts.forEach(d=>{const o=document.createElement('option');o.value=d.id;o.textContent=d.name+(occ.has(d.id)?' (ocupado)':'');if(occ.has(d.id))o.style.color='var(--text3)';sel.appendChild(o);});
-}
-function saveTenant(){
-  const name=document.getElementById('nt_name').value.trim(),rut=document.getElementById('nt_rut').value.trim();
-  const phone=document.getElementById('nt_phone').value.trim(),email=document.getElementById('nt_email').value.trim();
-  const deptId=document.getElementById('nt_dept').value,rent=parseInt(document.getElementById('nt_rent').value)||0;
-  const due=parseInt(document.getElementById('nt_due').value)||5,start=document.getElementById('nt_start').value;
-  if(!name||!rut||!deptId||!rent){showToast('toastTenant','Completa los campos obligatorios (*)',false);return;}
-  if(db.tenants.find(t=>t.rut===rut)){showToast('toastTenant','Ya existe un arrendatario con ese RUT',false);return;}
-  db.tenants.push({id:'t'+Date.now(),name,rut,phone,email,deptId,rent,due,start,payments:{0:null,1:null,2:null,3:null,4:'pending',5:null,6:null,7:null,8:null,9:null,10:null,11:null},vouchers:{}});
-  showToast('toastTenant',`${name} registrado/a correctamente.`);clearTenantForm();
-}
-function clearTenantForm(){['nt_name','nt_rut','nt_phone','nt_email','nt_rent','nt_due','nt_start'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});const s=document.getElementById('nt_dept');if(s)s.value='';}
-function saveDept(){
-  const name=document.getElementById('nd_name').value.trim(),address=document.getElementById('nd_addr').value.trim(),rolDpto=document.getElementById('nd_rolDpto').value.trim();
-  if(!name||!address){showToast('toastDept','Completa nombre y dirección del departamento',false);return;}
-  db.depts.push({id:'d'+Date.now(),name,address,rolDpto,rolBodega:document.getElementById('nd_rolBodega').value.trim(),rolEstac:document.getElementById('nd_rolEstac').value.trim(),gc:parseInt(document.getElementById('nd_gc').value)||0,floor:document.getElementById('nd_floor').value.trim()});
-  showToast('toastDept',`${name} registrado correctamente.`);clearDeptForm();
-}
-function clearDeptForm(){['nd_name','nd_addr','nd_rolDpto','nd_rolBodega','nd_rolEstac','nd_gc','nd_floor'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});}
-
-/* ── EDIT / DELETE DEPT ── */
-function openEditDept(id){
-  const d=db.depts.find(x=>x.id===id);if(!d)return;
-  document.getElementById('ed_id').value=d.id;
-  document.getElementById('ed_name').value=d.name;
-  document.getElementById('ed_addr').value=d.address;
-  document.getElementById('ed_rolDpto').value=d.rolDpto||'';
-  document.getElementById('ed_rolBodega').value=d.rolBodega||'';
-  document.getElementById('ed_rolEstac').value=d.rolEstac||'';
-  document.getElementById('ed_gc').value=d.gc||'';
-  document.getElementById('ed_floor').value=d.floor||'';
-  document.getElementById('btnTabEditDept').style.display='flex';
-  switchTab(null,'tabEditDept');
-}
-function updateDept(){
-  const id=document.getElementById('ed_id').value;
-  const name=document.getElementById('ed_name').value.trim();
-  const address=document.getElementById('ed_addr').value.trim();
-  if(!name||!address){showToast('toastEditDept','Nombre y dirección son obligatorios.',false);return;}
-  const d=db.depts.find(x=>x.id===id);if(!d)return;
-  d.name=name;d.address=address;
-  d.rolDpto=document.getElementById('ed_rolDpto').value.trim();
-  d.rolBodega=document.getElementById('ed_rolBodega').value.trim();
-  d.rolEstac=document.getElementById('ed_rolEstac').value.trim();
-  d.gc=parseInt(document.getElementById('ed_gc').value)||0;
-  d.floor=document.getElementById('ed_floor').value.trim();
-  document.getElementById('btnTabEditDept').style.display='none';
-  renderAdmin();
-  switchTab(null,'tabDepts');
-}
-function confirmDeleteDept(id){
-  const d=db.depts.find(x=>x.id===id);if(!d)return;
-  const hasTenant=db.tenants.find(t=>t.deptId===id);
-  if(hasTenant){
-    document.getElementById('confirmTitle').textContent='No se puede eliminar';
-    document.getElementById('confirmMsg').textContent='"'+d.name+'" tiene a '+hasTenant.name+' asignado. Elimina o reasigna al arrendatario primero.';
-    const btn=document.getElementById('confirmOkBtn');
-    const orig=btn.onclick;btn.textContent='Entendido';
-    btn.onclick=()=>{closeConfirm();btn.textContent='Eliminar';};
-    document.getElementById('confirmOverlay').classList.add('visible');
-    return;
-  }
-  document.getElementById('confirmTitle').textContent='Eliminar departamento';
-  document.getElementById('confirmMsg').textContent='¿Eliminar "'+d.name+'"? Esta acción no se puede deshacer.';
+  document.getElementById('confirmMsg').textContent='¿Eliminar a "'+u.nombre+'"? Esta acción no se puede deshacer.';
   document.getElementById('confirmOkBtn').textContent='Eliminar';
-  document.getElementById('confirmOkBtn').onclick=()=>{
-    db.depts=db.depts.filter(x=>x.id!==id);
-    closeConfirm();renderAdmin();
+  document.getElementById('confirmOkBtn').onclick=async()=>{
+    showLoading('Eliminando...');closeConfirm();
+    try{await sbDelete('admin_usuarios',uid);await renderUsersTable();showToast('toastUser','Usuario eliminado.');}catch(e){alert('Error: '+e.message);}
+    hideLoading();
   };
   document.getElementById('confirmOverlay').classList.add('visible');
 }
 
-/* ── EDIT / DELETE TENANT ── */
-function openEditTenant(id){
-  const t=db.tenants.find(x=>x.id===id);if(!t)return;
-  document.getElementById('et_id').value=t.id;
-  document.getElementById('et_name').value=t.name;
-  document.getElementById('et_rut').value=t.rut;
-  document.getElementById('et_phone').value=t.phone||'';
-  document.getElementById('et_email').value=t.email||'';
-  document.getElementById('et_rent').value=t.rent;
-  document.getElementById('et_due').value=t.due;
-  document.getElementById('et_start').value=t.start||'';
-  const sel=document.getElementById('et_dept');
-  const occ=new Set(db.tenants.filter(x=>x.id!==id).map(x=>x.deptId));
-  sel.innerHTML='<option value="">— Seleccionar —</option>';
-  db.depts.forEach(d=>{
-    const o=document.createElement('option');
-    o.value=d.id;o.textContent=d.name+(occ.has(d.id)?' (ocupado)':'');
-    if(occ.has(d.id))o.style.color='var(--text3)';
-    sel.appendChild(o);
-  });
-  sel.value=t.deptId;
-  document.getElementById('btnTabEditTenant').style.display='flex';
-  switchTab(null,'tabEditTenant');
-}
-function updateTenant(){
-  const id=document.getElementById('et_id').value;
-  const name=document.getElementById('et_name').value.trim();
-  const rut=document.getElementById('et_rut').value.trim();
-  const deptId=document.getElementById('et_dept').value;
-  const rent=parseInt(document.getElementById('et_rent').value)||0;
-  const due=parseInt(document.getElementById('et_due').value)||5;
-  if(!name||!rut||!deptId||!rent){showToast('toastEditTenant','Completa los campos obligatorios (*)',false);return;}
-  if(db.tenants.find(x=>x.rut===rut&&x.id!==id)){showToast('toastEditTenant','Ya existe otro arrendatario con ese RUT.',false);return;}
-  const t=db.tenants.find(x=>x.id===id);if(!t)return;
-  t.name=name;t.rut=rut;
-  t.phone=document.getElementById('et_phone').value.trim();
-  t.email=document.getElementById('et_email').value.trim();
-  t.deptId=deptId;t.rent=rent;t.due=due;
-  t.start=document.getElementById('et_start').value;
-  document.getElementById('btnTabEditTenant').style.display='none';
-  renderAdmin();
-  switchTab(null,'tabTenants');
-}
-function confirmDeleteTenant(id){
-  const t=db.tenants.find(x=>x.id===id);if(!t)return;
-  document.getElementById('confirmTitle').textContent='Eliminar arrendatario';
-  document.getElementById('confirmMsg').textContent='¿Eliminar a "'+t.name+'"? Se borrarán todos sus pagos y comprobantes. Esta acción no se puede deshacer.';
-  document.getElementById('confirmOkBtn').textContent='Eliminar';
-  document.getElementById('confirmOkBtn').onclick=()=>{
-    db.tenants=db.tenants.filter(x=>x.id!==id);
-    closeConfirm();renderAdmin();
-  };
-  document.getElementById('confirmOverlay').classList.add('visible');
-}
-
+/* ═══ START ═══ */
+window.addEventListener('DOMContentLoaded', init);
 </script>
 </body>
 </html>
