@@ -532,7 +532,11 @@ const HEADERS = { 'apikey': SB_KEY, 'Authorization': 'Bearer '+SB_KEY, 'Content-
 
 async function sbGet(table, params='') {
   const r = await fetch(`${SB_URL}/rest/v1/${table}?${params}`, { headers: HEADERS });
-  if (!r.ok) throw new Error(await r.text());
+  if (!r.ok) {
+    const errText = await r.text();
+    console.error(`sbGet ${table} error:`, errText);
+    throw new Error(errText);
+  }
   return r.json();
 }
 async function sbPost(table, body) {
@@ -605,30 +609,28 @@ async function init() {
   try {
     await loadAllData();
   } catch(e) {
-    console.error('Init error:', e);
-    // If tables don't exist yet, show setup prompt
-    if(e.message && e.message.includes('relation')) {
-      document.getElementById('screenLogin').innerHTML = `
-        <div class="login-center"><div class="login-box">
-          <div class="login-icon"><i class="ti ti-database"></i></div>
-          <h2>Configuración inicial</h2>
-          <p>Necesitas crear las tablas en Supabase. Ve al <strong>SQL Editor</strong> de tu proyecto y ejecuta el archivo <strong>schema.sql</strong> incluido.</p>
-          <button class="btn btn-brand btn-block" onclick="init()"><i class="ti ti-refresh"></i> Reintentar</button>
-        </div></div>`;
-    }
+    console.warn('Init warning (continuing):', e.message);
+    // Don't block UI on load errors
   }
   hideLoading();
 }
 
 async function loadAllData() {
-  const [depts, tenants, pagos] = await Promise.all([
-    sbGet('departamentos', 'order=nombre'),
-    sbGet('arrendatarios', 'order=nombre'),
-    sbGet('pagos', 'order=anio,mes')
-  ]);
-  cache.depts = depts;
-  cache.tenants = tenants;
-  cache.pagos = pagos;
+  try {
+    const [depts, tenants, pagos] = await Promise.all([
+      sbGet('departamentos', 'order=nombre'),
+      sbGet('arrendatarios', 'order=nombre'),
+      sbGet('pagos', 'order=anio,mes')
+    ]);
+    cache.depts = Array.isArray(depts) ? depts : [];
+    cache.tenants = Array.isArray(tenants) ? tenants : [];
+    cache.pagos = Array.isArray(pagos) ? pagos : [];
+  } catch(e) {
+    console.warn('loadAllData error:', e.message);
+    cache.depts = cache.depts || [];
+    cache.tenants = cache.tenants || [];
+    cache.pagos = cache.pagos || [];
+  }
 }
 
 /* ═══════════════════════════════════════════════
@@ -814,16 +816,16 @@ async function doLogin(){
     if(!res||res.length===0){err.className='alert alert-err show';return;}
     err.className='alert alert-err';
     currentTenant=res[0];
-    // load dept and pagos for this tenant
     const [depts, pagos] = await Promise.all([
       sbGet('departamentos', `id=eq.${currentTenant.depto_id}&select=*`),
       sbGet('pagos', `arrendatario_id=eq.${currentTenant.id}&order=anio,mes`)
     ]);
     currentTenant._dept = depts[0]||null;
-    currentTenant._pagos = pagos;
+    currentTenant._pagos = Array.isArray(pagos)?pagos:[];
     await showTenant();
   } catch(e) {
     hideLoading();
+    alert('Error de conexión: '+e.message);
     console.error(e);
   }
 }
