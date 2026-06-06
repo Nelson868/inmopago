@@ -252,7 +252,7 @@ table.tbl{width:100%;border-collapse:collapse;font-size:12px}
         <label>RUT del arrendatario</label>
         <input type="text" id="rutInput" placeholder="12.345.678-9" maxlength="12" inputmode="numeric" oninput="formatRut(this)" onkeydown="if(event.key==='Enter')doLogin()"/>
       </div>
-      <p class="hint" style="margin-bottom:1rem">Prueba: 12.345.678-9 · 9.876.543-2 · 14.567.890-K · 11.111.111-1</p>
+      <p class="hint" style="margin-bottom:1rem">Ejemplo: 12.345.678-9 </p>
       <button class="btn btn-brand btn-block" onclick="doLogin()"><i class="ti ti-arrow-right"></i> Continuar</button>
     </div>
   </div>
@@ -492,7 +492,6 @@ table.tbl{width:100%;border-collapse:collapse;font-size:12px}
         <button class="pass-toggle" onclick="togglePass('al_pass',this)" type="button"><i class="ti ti-eye"></i></button>
       </div>
     </div>
-    <p class="hint" style="margin-bottom:1rem">Usuario de prueba: <strong>admin</strong> / Contraseña: <strong>admin123</strong></p>
     <button class="btn btn-brand btn-block" onclick="doAdminLogin()"><i class="ti ti-lock-open"></i> Ingresar</button>
     <button class="btn btn-outline btn-block" style="margin-top:8px" onclick="closeAdminLogin()">Cancelar</button>
   </div>
